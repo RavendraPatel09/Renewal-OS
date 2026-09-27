@@ -61,6 +61,8 @@ app.include_router(demo.router, prefix="", tags=["demo-compat"])
 app.include_router(activity.router)
 app.include_router(activity.router, prefix="", tags=["activity-compat"])
 
+from sqlalchemy import text
+
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
@@ -68,7 +70,7 @@ async def health_check():
     db_status = "connected"
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
     except Exception:
         db_status = "error"
@@ -84,7 +86,7 @@ async def health_check():
     llm_status = "ready" if settings.GROQ_API_KEY else "fallback_rule_based"
 
     return {
-        "status": "healthy" if db_status == "connected" else "degraded",
+        "status": "ok" if db_status == "connected" else "degraded",
         "database": db_status,
         "authentication": auth_status,
         "hindsight": {

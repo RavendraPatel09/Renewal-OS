@@ -139,6 +139,33 @@ export const api = {
     return res.data;
   },
 
+  // Activity Stream / Audit Log
+  getActivityEvents: async () => {
+    const res = await apiClient.get('/api/activity');
+    return res.data;
+  },
+
+  // Renewal Brief & Meeting Prep
+  getRenewalBrief: async (accountId: string) => {
+    const res = await apiClient.get(`/api/accounts/${accountId}/renewal-brief`);
+    return res.data;
+  },
+
+  getMeetingPrep: async (accountId: string) => {
+    const res = await apiClient.get(`/api/accounts/${accountId}/meeting-prep`);
+    return res.data;
+  },
+
+  addMeetingNotes: async (accountId: string, data: { title: string; date?: string; participants?: string; notes: string }) => {
+    const res = await apiClient.post(`/api/accounts/${accountId}/meeting-notes`, data);
+    return res.data;
+  },
+
+  getObservations: async (accountId: string) => {
+    const res = await apiClient.get(`/api/accounts/${accountId}/observations`);
+    return res.data;
+  },
+
   // Demo Controls
   resetDemo: async () => {
     const res = await apiClient.post('/api/demo/reset');
@@ -160,3 +187,4 @@ export const api = {
     return res.data;
   }
 };
+
