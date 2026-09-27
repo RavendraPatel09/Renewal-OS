@@ -11,11 +11,16 @@ export const CopilotResponseCard: React.FC<Props> = ({ briefing }) => {
   const [showEvidence, setShowEvidence] = useState(true);
   const [showDirectives, setShowDirectives] = useState(false);
   const [showTrace, setShowTrace] = useState(true);
+  const [expandedMemoryIdx, setExpandedMemoryIdx] = useState<number | null>(null);
+  const [expandedObsId, setExpandedObsId] = useState<number | null>(null);
 
   return (
-    <div className="space-y-4 text-slate-900 dark:text-white">
+    <div className="space-y-4 text-slate-900 dark:text-white perspective-1000">
       {/* Top Banner with Mode & Executive Answer */}
-      <div className="p-6 bg-slate-900 text-white dark:bg-slate-950 rounded-2xl border border-slate-800 shadow-panel space-y-4">
+      <div className="card-3d-interactive p-6 bg-slate-900 text-white dark:bg-slate-950 rounded-2xl border border-slate-800 shadow-md space-y-4 relative overflow-hidden">
+        {/* Subtle top edge lighting */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-600/50 to-transparent" />
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
@@ -140,15 +145,44 @@ export const CopilotResponseCard: React.FC<Props> = ({ briefing }) => {
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5" /> Relevant Hindsight Observations
           </h4>
-          {briefing.observations.map((obs, i) => (
-            <div key={i} className="p-3 bg-amber-50/30 dark:bg-amber-950/20 rounded-lg space-y-1 text-xs border border-amber-200/60 dark:border-amber-900/40">
-              <span className="font-bold text-slate-900 dark:text-white">{obs.title}</span>
-              <p className="text-slate-600 dark:text-slate-300">{obs.description}</p>
-              <span className="text-[10px] text-slate-400 block pt-1 font-mono">
-                Evidence: {obs.evidence_count} memories • Timeline: {obs.first_detected} $\rightarrow$ {obs.last_confirmed}
-              </span>
-            </div>
-          ))}
+          <div className="space-y-2">
+            {briefing.observations.map((obs, i) => {
+              const isExpanded = expandedObsId === i;
+              return (
+                <div
+                  key={i}
+                  className="p-3 bg-amber-50/30 dark:bg-amber-950/20 rounded-lg space-y-1.5 text-xs border border-amber-200/60 dark:border-amber-900/40 transition"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold text-slate-900 dark:text-white">{obs.title}</span>
+                    <button
+                      onClick={() => setExpandedObsId(isExpanded ? null : i)}
+                      className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:underline shrink-0"
+                    >
+                      {isExpanded ? 'Hide Details' : 'Why this belief?'}
+                    </button>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{obs.description}</p>
+                  
+                  {isExpanded && (
+                    <div className="pt-2 mt-1 border-t border-amber-200/40 dark:border-amber-900/30 space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300 animate-fadeIn">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                        <span>First detected: {obs.first_detected || 'Earlier in lifecycle'}</span>
+                        <span>Last verified: {obs.last_confirmed || 'Current'}</span>
+                      </div>
+                      <p className="italic text-slate-500 dark:text-slate-400">
+                        Consolidated from {obs.evidence_count || 3} sequential touchpoints and customer sentiment signals.
+                      </p>
+                    </div>
+                  )}
+
+                  <span className="text-[10px] text-slate-400 block font-mono">
+                    Evidence: {obs.evidence_count} memories • Span: {obs.first_detected} $\rightarrow$ {obs.last_confirmed}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -163,31 +197,65 @@ export const CopilotResponseCard: React.FC<Props> = ({ briefing }) => {
           >
             <div className="flex items-center justify-between">
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-brand-500" /> Supporting Memories ({briefing.supporting_memories.length})
+                <Layers className="w-3.5 h-3.5 text-brand-500" /> Supporting Evidence ({briefing.supporting_memories.length})
               </h4>
-              <span className="text-[10px] text-slate-400">Exact Memory Bank Records</span>
+              <span className="text-[10px] text-slate-400">Click any item for raw memory context</span>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {briefing.supporting_memories.map((m, idx) => (
-                <div key={idx} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs flex items-start justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 dark:text-white">{m.date}</span>
-                      <span className="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                        {m.interaction_type}
-                      </span>
-                      {m.fact_type && (
-                        <span className="text-[10px] text-brand-600 dark:text-brand-400 font-mono">
-                          {m.fact_type}
-                        </span>
-                      )}
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {briefing.supporting_memories.map((m, idx) => {
+                const isSelected = expandedMemoryIdx === idx;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setExpandedMemoryIdx(isSelected ? null : idx)}
+                    className={`p-3 rounded-lg text-xs transition cursor-pointer border ${
+                      isSelected
+                        ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white">{m.date}</span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            {m.interaction_type}
+                          </span>
+                          {m.fact_type && (
+                            <span className="text-[10px] text-brand-600 dark:text-brand-400 font-mono">
+                              {m.fact_type}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-200 font-medium">"{m.summary || m.content}"</p>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono shrink-0">{m.account_id}</span>
                     </div>
-                    <p className="text-slate-600 dark:text-slate-300">"{m.summary || m.content}"</p>
+
+                    {isSelected && (
+                      <div className="pt-2.5 mt-2 border-t border-slate-200 dark:border-slate-700 space-y-2 animate-fadeIn text-[11px]">
+                        {m.content && m.content !== m.summary && (
+                          <div className="p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                            <span className="font-bold text-slate-700 dark:text-slate-200 block mb-0.5">Raw Interaction Log:</span>
+                            {m.content}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[10px]">
+                          <span>Retained into Hindsight Bank: <code className="text-slate-700 dark:text-slate-300">renewal_os_bank</code></span>
+                          <a
+                            href={`/accounts/${m.account_id}`}
+                            className="font-semibold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Open Account Timeline →
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono shrink-0">{m.account_id}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </motion.div>
         )}

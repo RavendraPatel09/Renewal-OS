@@ -23,8 +23,8 @@ export const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
-      <div className="w-full max-w-md space-y-8 bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-panel">
+    <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4 perspective-1000">
+      <div className="card-3d-interactive w-full max-w-md space-y-8 bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-panel">
         <div className="text-center space-y-2">
           <Logo className="justify-center" size={32} showText={false} />
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Reset your password</h1>
@@ -58,7 +58,7 @@ export const ForgotPassword: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="priya@company.com"
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                 />
               </div>
             </div>
@@ -66,7 +66,7 @@ export const ForgotPassword: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-subtle transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="btn-3d w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-subtle transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? 'Sending link...' : 'Send reset link'} <ArrowRight className="w-4 h-4" />
             </button>

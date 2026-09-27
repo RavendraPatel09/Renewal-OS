@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { BriefingResponse, Account } from '../types';
 import { CopilotResponseCard } from '../components/CopilotResponseCard';
+import { useUI } from '../context/UIContext';
 import { Compass, Search, Sparkles, CornerDownLeft, ArrowRight, Layers, ShieldCheck, History, Database } from 'lucide-react';
 
 export const Copilot: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const initialAccount = searchParams.get('account') || 'acme-corp';
+  const { activeAccountContext, setActiveAccountContext } = useUI();
+  const initialAccount = searchParams.get('account') || activeAccountContext || 'acme-corp';
 
   const [query, setQuery] = useState('');
   const [accountId, setAccountId] = useState(initialAccount);

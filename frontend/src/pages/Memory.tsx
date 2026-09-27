@@ -82,10 +82,10 @@ export const Memory: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           onClick={() => setFactTypeFilter(factTypeFilter === 'world_fact' ? 'all' : 'world_fact')}
-          className={`p-4 rounded-xl border text-left transition ${
+          className={`card-3d-interactive p-4 rounded-xl border text-left transition ${
             factTypeFilter === 'world_fact'
-              ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-500/20'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+              ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -102,10 +102,10 @@ export const Memory: React.FC = () => {
 
         <button
           onClick={() => setFactTypeFilter(factTypeFilter === 'experience_fact' ? 'all' : 'experience_fact')}
-          className={`p-4 rounded-xl border text-left transition ${
+          className={`card-3d-interactive p-4 rounded-xl border text-left transition ${
             factTypeFilter === 'experience_fact'
-              ? 'bg-purple-50/50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-500/20'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+              ? 'bg-purple-50/50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -122,10 +122,10 @@ export const Memory: React.FC = () => {
 
         <button
           onClick={() => setFactTypeFilter(factTypeFilter === 'observation' ? 'all' : 'observation')}
-          className={`p-4 rounded-xl border text-left transition ${
+          className={`card-3d-interactive p-4 rounded-xl border text-left transition ${
             factTypeFilter === 'observation'
-              ? 'bg-amber-50/50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-500/20'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+              ? 'bg-amber-50/50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">

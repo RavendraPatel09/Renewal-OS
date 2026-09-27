@@ -7,6 +7,8 @@ import { MemoryEvolutionWidget } from '../components/MemoryEvolutionWidget';
 import { CustomerKnowledgeGraph } from '../components/CustomerKnowledgeGraph';
 import { TemporalEvolutionTimeline } from '../components/TemporalEvolutionTimeline';
 import { CopilotResponseCard } from '../components/CopilotResponseCard';
+import { AccountSpatialHierarchy } from '../components/AccountSpatialHierarchy';
+import { useUI } from '../context/UIContext';
 import { ArrowLeft, Sparkles, Compass, Plus, Calendar, FileText, ShieldAlert, CheckCircle2, AlertTriangle, Lightbulb, ChevronRight, Layers, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../components/Toast';
@@ -19,6 +21,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
   const { id } = useParams<{ id: string }>();
   const accountId = id || 'acme-corp';
   const { showToast } = useToast();
+  const { setActiveAccountContext, density } = useUI();
 
   const [account, setAccount] = useState<CustomerAccount | null>(null);
   const [memories, setMemories] = useState<InteractionMemory[]>([]);
@@ -55,6 +58,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
   };
 
   useEffect(() => {
+    setActiveAccountContext(accountId);
     loadData();
   }, [accountId]);
 
@@ -163,30 +167,39 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleOpenRenewalBrief}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
+            className="btn-3d px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5" /> Prepare Renewal
           </button>
 
           <button
             onClick={handleOpenMeetingPrep}
-            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+            className="btn-3d px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
           >
             <Calendar className="w-3.5 h-3.5" /> Prepare for Meeting
           </button>
 
           <button
             onClick={() => setIsNotesModalOpen(true)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+            className="btn-3d px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
           >
             <FileText className="w-3.5 h-3.5" /> Add Meeting Notes
           </button>
         </div>
       </div>
 
+      {/* Account Spatial Continuity Hierarchy */}
+      <AccountSpatialHierarchy
+        accountName={account.name}
+        interactionCount={memories.length}
+        commitmentCount={account.unresolved_promises_count || (account.commitments?.length || 0)}
+        observationCount={evolutionData?.observations?.length || 4}
+        renewalDays={account.renewal_days}
+      />
+
       {/* Customer Evolution & Commitments Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
+        <div className="card-3d-interactive p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Current Status</span>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-900 dark:text-white capitalize">{account.status}</span>
@@ -198,7 +211,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
           </div>
         </div>
 
-        <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
+        <div className="card-3d-interactive p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Open Commitments</span>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-900 dark:text-white">
@@ -208,7 +221,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
           </div>
         </div>
 
-        <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
+        <div className="card-3d-interactive p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Retained Memories</span>
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-900 dark:text-white">{memories.length} Ingested</span>

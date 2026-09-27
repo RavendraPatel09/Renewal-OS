@@ -1,8 +1,9 @@
 import React from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
-import { Search, Sun, Moon, Plus, Compass, LayoutDashboard, Users, Layers, PlayCircle } from 'lucide-react';
+import { Search, Sun, Moon, Plus, Compass, LayoutDashboard, Users, Layers, PlayCircle, Maximize2, Minimize2, ListFilter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
 
 interface Props {
   darkMode: boolean;
@@ -20,6 +21,7 @@ export const Navbar: React.FC<Props> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
+  const { focusMode, toggleFocusMode, density, toggleDensity, activeAccountContext } = useUI();
 
   // Page title resolution
   const getPageTitle = () => {
@@ -51,21 +53,51 @@ export const Navbar: React.FC<Props> = ({
         <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
           <span className="text-slate-400 dark:text-slate-600">/</span>
           <span className="text-slate-900 dark:text-slate-100 font-bold">{getPageTitle()}</span>
+          {focusMode && (
+            <span className="ml-2 px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              FOCUS (Esc)
+            </span>
+          )}
         </div>
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {/* Global Search ⌘K */}
         <button
           onClick={onOpenSearch}
           className="flex items-center gap-2 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700/70 border border-slate-200/60 dark:border-slate-700/60 rounded-lg text-xs text-slate-500 dark:text-slate-400 transition"
+          title="Search or Jump (⌘K or /)"
         >
           <Search className="w-3.5 h-3.5 text-slate-400" />
           <span className="hidden sm:inline text-[11px]">Search...</span>
           <kbd className="hidden sm:inline-block px-1 py-0.2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-mono text-slate-400">
             ⌘K
           </kbd>
+        </button>
+
+        {/* Focus Mode Toggle */}
+        <button
+          onClick={toggleFocusMode}
+          className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border transition ${
+            focusMode
+              ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+          title={focusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode'}
+        >
+          {focusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          <span className="text-[11px] hidden lg:inline">{focusMode ? 'Focus' : 'Focus'}</span>
+        </button>
+
+        {/* Data Density Toggle */}
+        <button
+          onClick={toggleDensity}
+          className="hidden md:flex items-center gap-1 px-2 py-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-xs"
+          title={`Switch to ${density === 'comfortable' ? 'compact' : 'comfortable'} view`}
+        >
+          <ListFilter className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-mono capitalize">{density}</span>
         </button>
 
         {/* Quick Add Action (Mobile & Tablet) */}

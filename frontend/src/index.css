@@ -13,8 +13,8 @@
     --text-primary: #121417;
     --text-secondary: #5F6773;
     --text-muted: #8D95A0;
-    --border-subtle: rgba(18, 20, 23, 0.07);
-    --border-strong: rgba(18, 20, 23, 0.12);
+    --border-subtle: rgba(18, 20, 23, 0.08);
+    --border-strong: rgba(18, 20, 23, 0.14);
     --accent-main: #2563EB;
   }
 
@@ -50,11 +50,55 @@
 }
 
 .surface-hover {
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 .surface-hover:hover {
   background-color: var(--surface-hover);
   border-color: var(--border-strong);
+}
+
+/* 3D Perspective & Depth System */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.perspective-600 {
+  perspective: 600px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Interactive Card Elevation & Micro-Tilt */
+.card-3d-interactive {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms ease;
+  transform: translateZ(0);
+}
+.card-3d-interactive:hover {
+  transform: translateY(-2px) translateZ(4px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+}
+.dark .card-3d-interactive:hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Micro-Interaction Button Press */
+.btn-3d {
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 150ms ease;
+}
+.btn-3d:active {
+  transform: scale(0.98) translateY(1px);
+}
+
+/* Subtle Glass Accent */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.dark .glass-panel {
+  background: rgba(19, 22, 28, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* Clean Custom Scrollbar */
@@ -82,5 +126,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    transform: none !important;
   }
 }

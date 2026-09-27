@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { LayoutDashboard, Users, Compass, Layers, PlayCircle } from 'lucide-react';
+import { useUI } from '../context/UIContext';
 
 interface Props {
   children: React.ReactNode;
@@ -19,6 +20,19 @@ export const AppLayout: React.FC<Props> = ({
   onOpenAddModal,
   onOpenSearch
 }) => {
+  const { focusMode, setFocusMode } = useUI();
+
+  // Handle global Esc to exit focus mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && focusMode) {
+        setFocusMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusMode, setFocusMode]);
+
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150">
       {/* Desktop Sidebar */}
@@ -35,7 +49,9 @@ export const AppLayout: React.FC<Props> = ({
         />
 
         {/* Content Container */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-12">
+        <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 md:pb-12 transition-all duration-200 ${
+          focusMode ? 'max-w-7xl' : 'max-w-6xl'
+        }`}>
           {children}
         </main>
 

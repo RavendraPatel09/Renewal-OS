@@ -42,7 +42,7 @@ export const Accounts: React.FC = () => {
             Accounts
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Portfolio directory with persistent memory history and renewal timelines.
+            Portfolio directory with persistent memory history, commitments, and renewal timelines.
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export const Accounts: React.FC = () => {
               placeholder="Search accounts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-600 w-48"
+              className="pl-8 pr-3 py-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-600 w-48 transition-all"
             />
           </div>
 
@@ -78,6 +78,32 @@ export const Accounts: React.FC = () => {
                 {tab.label}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Portfolio Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="card-3d-interactive p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
+          <span className="text-[10px] font-semibold uppercase text-slate-400">Total Accounts</span>
+          <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">{accounts.length}</div>
+        </div>
+        <div className="card-3d-interactive p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
+          <span className="text-[10px] font-semibold uppercase text-slate-400">Need Attention</span>
+          <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-0.5">
+            {accounts.filter(a => a.risk_level === 'high' || a.unresolved_promises_count > 0).length}
+          </div>
+        </div>
+        <div className="card-3d-interactive p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
+          <span className="text-[10px] font-semibold uppercase text-slate-400">Healthy Standing</span>
+          <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+            {accounts.filter(a => a.risk_level === 'low').length}
+          </div>
+        </div>
+        <div className="card-3d-interactive p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
+          <span className="text-[10px] font-semibold uppercase text-slate-400">Renewal &lt; 45d</span>
+          <div className="text-lg font-bold text-brand-600 dark:text-brand-400 mt-0.5">
+            {accounts.filter(a => a.renewal_days <= 45).length}
           </div>
         </div>
       </div>

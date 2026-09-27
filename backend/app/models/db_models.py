@@ -1,11 +1,14 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 def generate_uuid():
     return str(uuid.uuid4())
+
+def get_utc_now():
+    return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = "users"
@@ -14,8 +17,8 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
+    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
 
     workspaces = relationship("Workspace", back_populates="owner")
     interactions = relationship("Interaction", back_populates="user")
@@ -27,8 +30,8 @@ class Workspace(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String(100), nullable=False)
     owner_id = Column(String, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
+    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
 
     owner = relationship("User", back_populates="workspaces")
     accounts = relationship("Account", back_populates="workspace", cascade="all, delete-orphan")
@@ -52,8 +55,8 @@ class Account(Base):
     mrr = Column(Integer, default=50000)
     owner_id = Column(String, ForeignKey("users.id"), nullable=True)
     csm_name = Column(String(100), default="Priya Sharma")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
+    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
 
     workspace = relationship("Workspace", back_populates="accounts")
     contacts = relationship("Contact", back_populates="account", cascade="all, delete-orphan")
@@ -68,7 +71,7 @@ class Contact(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), nullable=False)
     role = Column(String(100), default="Stakeholder")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
 
     account = relationship("Account", back_populates="contacts")
 
@@ -88,7 +91,7 @@ class Interaction(Base):
     fact_type = Column(String(50), default="world_fact")  # world_fact, experience_fact
     hindsight_retained = Column(Boolean, default=False)
     hindsight_memory_id = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
 
     account = relationship("Account", back_populates="interactions")
     user = relationship("User", back_populates="interactions")
@@ -103,7 +106,7 @@ class Commitment(Base):
     owner_name = Column(String(100), default="Priya Sharma")
     status = Column(String(50), default="open")  # open, completed, overdue, cancelled
     due_date = Column(String(50), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
     completed_at = Column(DateTime, nullable=True)
 
     account = relationship("Account", back_populates="commitments")
@@ -117,7 +120,7 @@ class Feedback(Base):
     category = Column(String(50), default="general")
     message = Column(Text, nullable=False)
     email = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_utc_now)
 
     user = relationship("User", back_populates="feedbacks")
 
@@ -128,8 +131,7 @@ class AuditEvent(Base):
     workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
     account_id = Column(String, nullable=True)
-    event_type = Column(String(50), nullable=False)  # interaction_retained, memory_recalled, reflect_completed, observation_formed, commitment_created, commitment_completed, user_signin, demo_reset, meeting_notes_retained
+    event_type = Column(String(50), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
+    created_at = Column(DateTime, default=get_utc_now)

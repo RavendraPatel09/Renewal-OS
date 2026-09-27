@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, Settings, PlayCircle, Layers, Compass, Plus, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Settings, PlayCircle, Layers, Compass, Plus, LogOut, Maximize2, Minimize2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
 import { Logo } from './Logo';
 
 interface Props {
@@ -9,21 +10,60 @@ interface Props {
 }
 
 export const Sidebar: React.FC<Props> = ({ onOpenAddModal }) => {
-  const { user, signout } = useAuth();
+  const { user } = useAuth();
+  const { focusMode, toggleFocusMode, systemStatus } = useUI();
 
   const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
     : 'PS';
 
+  if (focusMode) {
+    return (
+      <aside className="w-14 shrink-0 hidden md:flex flex-col items-center justify-between border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/90 h-screen sticky top-0 py-3 select-none transition-all duration-200">
+        <div className="flex flex-col items-center gap-4">
+          <NavLink to="/dashboard" title="RenewalOS Dashboard">
+            <Logo size={20} showText={false} />
+          </NavLink>
+          <button
+            onClick={onOpenAddModal}
+            className="p-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg hover:scale-105 transition"
+            title="Add Interaction"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={toggleFocusMode}
+            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Exit Focus Mode (Esc)"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+          <span
+            className={`w-2 h-2 rounded-full ${systemStatus.apiConnected ? 'bg-emerald-500' : 'bg-rose-500'}`}
+            title={systemStatus.apiConnected ? 'Memory Bank Connected' : 'Memory Bank Offline'}
+          />
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-56 shrink-0 hidden md:flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/90 h-screen sticky top-0 p-3 select-none">
+    <aside className="w-56 shrink-0 hidden md:flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/90 h-screen sticky top-0 p-3 select-none transition-all duration-200">
       {/* Brand & Workspace */}
       <div className="px-2.5 py-3 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-3 mb-3">
         <NavLink to="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition">
           <Logo size={22} />
           <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">RenewalOS</span>
         </NavLink>
-        <span className="w-2 h-2 rounded-full bg-emerald-500" title="Memory Bank Active" />
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`w-2 h-2 rounded-full ${systemStatus.apiConnected ? 'bg-emerald-500' : 'bg-rose-500'}`}
+            title={systemStatus.apiConnected ? 'Hindsight Bank Active' : 'Memory Bank Offline'}
+          />
+        </div>
       </div>
 
       {/* Quick Add Action */}
