@@ -144,13 +144,49 @@ ACME_OBSERVATIONS = [
     {
         "id": "obs-acme-sso",
         "account_id": "acme-corp",
-        "title": "Persistent SSO Dissatisfaction & Missed Product Commitment",
-        "description": "Acme Corp has experienced recurring SAML SSO authentication failures across multiple interactions despite an explicit QBR commitment from engineering to resolve it by Q3.",
-        "evidence_count": 4,
-        "first_detected": "2026-07-02",
-        "last_confirmed": "2026-08-11",
+        "title": "Persistent SSO Dissatisfaction & Unresolved Engineering Commitment",
+        "description": "Acme Corp has experienced recurring SAML SSO authentication failures across 5 interactions despite an explicit QBR commitment from engineering to resolve it by Q3.",
+        "evidence_count": 5,
+        "first_detected": "2026-06-15",
+        "last_confirmed": "2026-08-14",
         "status": "Active Risk",
-        "supporting_memory_ids": ["acme-mem-2", "acme-mem-3", "acme-mem-4", "acme-mem-5", "acme-mem-6"]
+        "supporting_memory_ids": ["acme-mem-2", "acme-mem-3", "acme-mem-4", "acme-mem-5", "acme-mem-6"],
+        "agent_understanding": "This is no longer an isolated technical support ticket. The repeated unresolved authentication problem directly undermines customer trust and jeopardizes the upcoming $120k ARR renewal in 14 days.",
+        "suggested_action": "Execute immediate VP Engineering alignment and provide a binding 14-day SAML SSO fix timeline before initiating renewal commercial terms.",
+        "conflicting_evidence": "CSM recorded positive executive feedback during initial kickoff, but sentiment degraded sharply following repeated SSO timeouts.",
+        "related_entities": ["SAML Okta SSO", "Support Ticket #4821", "Support Ticket #5102", "Priya Sharma", "VP Engineering (Acme)"],
+        "evolution_stages": [
+            {
+                "date": "2026-06-15",
+                "label": "Initial SSO Requirement",
+                "detail": "Customer reported Okta SAML SSO is strict mandatory compliance for 450 users.",
+                "memory_id": "acme-mem-2"
+            },
+            {
+                "date": "2026-07-02",
+                "label": "Support Escalation #4821",
+                "detail": "Recurring token timeout errors logged; escalated to Tier 3 engineering.",
+                "memory_id": "acme-mem-3"
+            },
+            {
+                "date": "2026-07-18",
+                "label": "CSM Commitment at QBR",
+                "detail": "Product team promised dedicated v2.4 SSO patch by end of quarter.",
+                "memory_id": "acme-mem-4"
+            },
+            {
+                "date": "2026-08-04",
+                "label": "Unresolved Commitment",
+                "detail": "Customer logged ticket #5102 stating authentication still fails for 40% of team.",
+                "memory_id": "acme-mem-5"
+            },
+            {
+                "date": "2026-08-14",
+                "label": "Renewal Conditioned on Fix",
+                "detail": "VP Engineering stated renewal approval blocked until SSO stability is proven.",
+                "memory_id": "acme-mem-6"
+            }
+        ]
     }
 ]
 

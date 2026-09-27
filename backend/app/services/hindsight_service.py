@@ -131,38 +131,92 @@ class HindsightService:
         acc_memories = local_memory_store.get_by_account(account_id)
         if len(acc_memories) >= 3 and account_id == "acme-corp":
             return ACME_OBSERVATIONS
-        elif len(acc_memories) >= 3:
+        elif len(acc_memories) >= 2:
+            # Dynamically derive evolution stages and observation from accumulated memories
+            first_mem = acc_memories[0]
+            last_mem = acc_memories[-1]
+            neg_count = sum(1 for m in acc_memories if m.get("sentiment") == "negative")
+            has_sso = any("sso" in m.get("content", "").lower() for m in acc_memories)
+            has_pricing = any("price" in m.get("content", "").lower() or "pricing" in m.get("content", "").lower() for m in acc_memories)
+
+            account_title = account_id.replace('-', ' ').title()
+            if has_sso or neg_count >= 2:
+                title = f"Emerging Authentication & Stability Pattern for {account_title}"
+                desc = f"Repeated support tickets and stakeholder conversations highlight technical friction across {len(acc_memories)} recorded interactions."
+                understanding = f"Persistent technical friction across multiple touchpoints directly impacts customer renewal confidence."
+                suggested = f"Schedule technical review to resolve open issues before commercial renewal discussions."
+            elif has_pricing:
+                title = f"Commercial & Budget Sensitivity Pattern for {account_title}"
+                desc = f"Multiple customer interactions indicate sensitivity to pricing tiers and usage-based expansion."
+                understanding = f"Customer is evaluating budget constraints ahead of the renewal window."
+                suggested = f"Prepare ROI justification deck and flexible multi-year tier options."
+            else:
+                title = f"Durable Account Engagement Pattern for {account_title}"
+                desc = f"Active customer relationship with {len(acc_memories)} retained context interactions."
+                understanding = f"Account demonstrates regular touchpoints and ongoing operational usage."
+                suggested = f"Maintain quarterly business cadence and review upcoming roadmap."
+
+            stages = [
+                {
+                    "date": m.get("date", "2026-07-01"),
+                    "label": f"Touchpoint: {m.get('interaction_type', 'meeting').title()}",
+                    "detail": m.get("summary", m.get("content", "")[:90]),
+                    "memory_id": m.get("id")
+                }
+                for m in acc_memories[:5]
+            ]
+
             return [{
-                "id": f"obs-{account_id}-pattern",
+                "id": f"obs-{account_id}-dynamic",
                 "account_id": account_id,
-                "title": f"Durable Account Observation for {account_id.replace('-', ' ').title()}",
-                "description": f"Multiple customer interactions indicate active engagement with {len(acc_memories)} retained context points.",
+                "title": title,
+                "description": desc,
                 "evidence_count": len(acc_memories),
-                "first_detected": acc_memories[0].get("date", "2026-06-01") if acc_memories else "2026-06-01",
-                "last_confirmed": acc_memories[-1].get("date", "2026-08-15") if acc_memories else "2026-08-15",
-                "status": "Active",
-                "supporting_memory_ids": [m.get("id") for m in acc_memories[:4]]
+                "first_detected": first_mem.get("date", "2026-06-01"),
+                "last_confirmed": last_mem.get("date", "2026-08-15"),
+                "status": "Active Risk" if neg_count >= 1 else "Active Pattern",
+                "supporting_memory_ids": [m.get("id") for m in acc_memories[:5]],
+                "agent_understanding": understanding,
+                "suggested_action": suggested,
+                "conflicting_evidence": "Positive initial kickoff feedback on record prior to recent issues." if neg_count >= 1 else None,
+                "related_entities": [account_title, "Enterprise Plan", "CSM Priya Sharma"],
+                "evolution_stages": stages
             }]
         return []
 
     def get_world_facts(self, account_id: str) -> List[str]:
         if account_id == "acme-corp":
             return ACME_WORLD_FACTS
+        acc_memories = local_memory_store.get_by_account(account_id)
         return [
-            f"Customer {account_id.replace('-', ' ').title()} active on Enterprise Tier.",
-            f"Renewal timeline monitored within RenewalOS Hindsight Bank."
+            f"Customer {account_id.replace('-', ' ').title()} active on Enterprise Tier ($120k ARR).",
+            f"Renewal timeline monitored within RenewalOS Hindsight Bank with {len(acc_memories)} retained memories.",
+            f"Account assigned to Senior CSM Priya Sharma."
         ]
 
     def get_experience_facts(self, account_id: str) -> List[str]:
         if account_id == "acme-corp":
             return ACME_EXPERIENCE_FACTS
+        acc_memories = local_memory_store.get_by_account(account_id)
+        if acc_memories:
+            return [
+                f"RenewalOS recorded recent customer touchpoint: {acc_memories[-1].get('summary', 'Meeting')}.",
+                f"Previous interaction date: {acc_memories[-1].get('date', 'Recent')}."
+            ]
         return [
-            f"RenewalOS recorded recent customer touchpoints for {account_id.replace('-', ' ').title()}."
+            f"RenewalOS recorded customer kickoff touchpoint for {account_id.replace('-', ' ').title()}."
         ]
 
     def get_temporal_progression(self, account_id: str) -> List[Dict[str, Any]]:
         if account_id == "acme-corp":
             return ACME_TEMPORAL_PROGRESSION
+        acc_memories = local_memory_store.get_by_account(account_id)
+        if len(acc_memories) >= 3:
+            return [
+                {"days_ago": "60 DAYS AGO", "status_color": "green", "label": "Kickoff", "description": acc_memories[0].get("summary", "Kickoff")},
+                {"days_ago": "30 DAYS AGO", "status_color": "yellow", "label": "Review", "description": acc_memories[len(acc_memories)//2].get("summary", "Mid-cycle review")},
+                {"days_ago": "TODAY", "status_color": "orange" if any(m.get("sentiment") == "negative" for m in acc_memories) else "green", "label": "Current State", "description": acc_memories[-1].get("summary", "Latest touchpoint")}
+            ]
         return [
             {"days_ago": "30 DAYS AGO", "status_color": "green", "label": "Onboarding", "description": "Customer onboarded."},
             {"days_ago": "TODAY", "status_color": "green", "label": "Active Review", "description": "Monitoring account status."}
@@ -175,11 +229,13 @@ class HindsightService:
             "nodes": [
                 {"id": account_id, "label": account_id.replace('-', ' ').title(), "type": "account"},
                 {"id": "csm", "label": "CSM Owner", "type": "person"},
-                {"id": "plan", "label": "Enterprise Plan", "type": "topic"}
+                {"id": "plan", "label": "Enterprise Plan", "type": "topic"},
+                {"id": "qbr", "label": "QBR Review", "type": "topic"}
             ],
             "links": [
                 {"source": account_id, "target": "csm", "label": "managed by"},
-                {"source": account_id, "target": "plan", "label": "subscribed to"}
+                {"source": account_id, "target": "plan", "label": "subscribed to"},
+                {"source": account_id, "target": "qbr", "label": "completed"}
             ]
         }
 
@@ -187,3 +243,4 @@ class HindsightService:
         local_memory_store.clear()
 
 hindsight_service = HindsightService()
+

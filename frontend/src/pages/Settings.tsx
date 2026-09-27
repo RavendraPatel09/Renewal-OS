@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Building, Sun, Moon, Bell, Shield, LogOut, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   darkMode: boolean;
@@ -9,11 +11,30 @@ interface Props {
 
 export const Settings: React.FC<Props> = ({ darkMode, setDarkMode }) => {
   const { showToast } = useToast();
+  const { user, signout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'profile' | 'workspace' | 'appearance' | 'notifications' | 'security'>('profile');
 
-  const [name, setName] = useState('Priya Sharma');
-  const [email, setEmail] = useState('priya@company.com');
+  const [name, setName] = useState(user?.name || 'Priya Sharma');
+  const [email, setEmail] = useState(user?.email || 'priya@company.com');
   const [workspaceName, setWorkspaceName] = useState('Enterprise CSM Workspace');
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+  }, [user]);
+
+  const initials = name
+    ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'PS';
+
+  const handleSignOut = () => {
+    signout();
+    showToast('Signed out', 'Session terminated successfully');
+    navigate('/signin');
+  };
 
   const [renewalAlerts, setRenewalAlerts] = useState(true);
   const [memoryUpdates, setMemoryUpdates] = useState(true);
@@ -76,12 +97,12 @@ export const Settings: React.FC<Props> = ({ darkMode, setDarkMode }) => {
               </h3>
 
               <div className="flex items-center gap-4 py-2">
-                <div className="w-14 h-14 rounded-full bg-brand-600 text-white font-extrabold text-lg flex items-center justify-center border-2 border-brand-200 dark:border-brand-800">
-                  PS
+                <div className="w-14 h-14 rounded-full bg-brand-600 text-white font-extrabold text-lg flex items-center justify-center border-2 border-brand-200 dark:border-brand-800 shadow-sm">
+                  {initials}
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white block">Priya Sharma</span>
-                  <span className="text-[11px] text-slate-500 block">Senior CSM • 42 Accounts</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white block">{name || 'Priya Sharma'}</span>
+                  <span className="text-[11px] text-slate-500 block">{email || 'priya@company.com'} • Active Workspace Member</span>
                 </div>
               </div>
 
@@ -230,7 +251,7 @@ export const Settings: React.FC<Props> = ({ darkMode, setDarkMode }) => {
               </div>
 
               <button
-                onClick={() => showToast('Signed out', 'Session terminated')}
+                onClick={handleSignOut}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow-subtle transition flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" /> Sign Out of Workspace

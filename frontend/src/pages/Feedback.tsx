@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../services/api';
 import { MessageSquare, Send, CheckCircle2, AlertCircle, Smile, Frown, Meh, Award } from 'lucide-react';
 import { useToast } from '../components/Toast';
 
@@ -9,18 +10,32 @@ export const Feedback: React.FC = () => {
   const [feedbackText, setFeedbackText] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!feedbackText) return;
+    if (!feedbackText.trim()) return;
     setLoading(true);
+    setError(null);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await api.submitFeedback({
+        rating,
+        category,
+        message: feedbackText,
+        email: email || undefined
+      });
       setSubmitted(true);
       showToast('Feedback submitted', 'Thank you for helping us refine RenewalOS');
-    }, 600);
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.detail || 'Failed to submit feedback.';
+      setError(msg);
+      showToast('Submission failed', msg, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,6 +51,13 @@ export const Feedback: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-panel">
+        {error && (
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {submitted ? (
           <div className="text-center py-8 space-y-4">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
@@ -43,7 +65,7 @@ export const Feedback: React.FC = () => {
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">Thank you for your feedback!</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              Your notes have been sent to the product team to inform future memory engine iterations.
+              Your feedback has been saved directly to the database to inform future memory engine iterations.
             </p>
             <button
               onClick={() => {
@@ -141,7 +163,7 @@ export const Feedback: React.FC = () => {
               disabled={loading}
               className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-subtle transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? 'Submitting...' : 'Send Feedback'} <Send className="w-4 h-4" />
+              {loading ? 'Submitting to database...' : 'Send Feedback'} <Send className="w-4 h-4" />
             </button>
           </form>
         )}

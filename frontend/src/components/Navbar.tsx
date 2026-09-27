@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 import { LayoutDashboard, Users, Bot, Layers, PlayCircle, Search, Sun, Moon, Plus, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   darkMode: boolean;
@@ -15,10 +16,14 @@ export const Navbar: React.FC<Props> = ({
   darkMode,
   setDarkMode,
   onOpenAddModal,
-  onOpenSearch,
-  isAuthenticated = true
+  onOpenSearch
 }) => {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+    : 'PS';
 
   return (
     <header className="sticky top-0 z-40 glass-nav transition-colors duration-200">
@@ -122,10 +127,10 @@ export const Navbar: React.FC<Props> = ({
             <button
               onClick={() => navigate('/settings')}
               className="flex items-center gap-2 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
-              title="Workspace settings"
+              title={`Workspace settings (${user?.email || 'priya@company.com'})`}
             >
-              <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center border border-slate-300 dark:border-slate-600">
-                PS
+              <div className="w-7 h-7 rounded-full bg-brand-600 text-white font-bold text-xs flex items-center justify-center border border-brand-500 shadow-sm">
+                {initials}
               </div>
             </button>
           ) : (

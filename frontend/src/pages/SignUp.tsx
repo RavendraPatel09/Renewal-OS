@@ -3,10 +3,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 import { Eye, EyeOff, Lock, Mail, User, Building, ArrowRight, AlertCircle } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 
 export const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { signup } = useAuth();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
@@ -15,7 +18,7 @@ export const SignUp: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password || !company) {
       setError('All fields are required to create a workspace.');
@@ -24,11 +27,17 @@ export const SignUp: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await signup(name, email, password, company);
       showToast('Workspace created!', 'Welcome to RenewalOS');
       navigate('/dashboard');
-    }, 800);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to create workspace.';
+      setError(msg);
+      showToast('Signup failed', msg, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

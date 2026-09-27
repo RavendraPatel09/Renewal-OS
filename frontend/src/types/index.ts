@@ -1,7 +1,17 @@
+export interface CommitmentItem {
+  id: string;
+  account_id: string;
+  description: string;
+  owner_name: string;
+  due_date: string;
+  status: 'pending' | 'in_progress' | 'fulfilled' | 'overdue';
+}
+
 export interface CustomerAccount {
   id: string;
   name: string;
   tier: string;
+  plan?: string;
   renewal_days: number;
   risk_score: number;
   risk_level: 'low' | 'medium' | 'high';
@@ -11,6 +21,15 @@ export interface CustomerAccount {
   status: 'active' | 'renewed' | 'churned';
   mrr: number;
   csm_name: string;
+  commitments?: CommitmentItem[];
+  contacts?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    is_champion?: boolean;
+    is_decision_maker?: boolean;
+  }>;
 }
 
 export interface Observation {

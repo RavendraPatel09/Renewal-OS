@@ -11,12 +11,21 @@ from app.models.seed_data import (
     HISTORICAL_RENEWED_MEMORIES
 )
 
+from app.api.activity import record_audit_event
+
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
 @router.post("/reset")
-async def reset_demo():
+async def reset_demo(db: Session = Depends(get_db)):
     hindsight_service.reset_memories()
-    return {"status": "success", "message": "Demo state reset. Hindsight memory bank cleared."}
+    record_audit_event(
+        db=db,
+        event_type="demo_reset",
+        title="Demo Environment Reset",
+        description="Demo memory bank cleared for fresh scenario walkthrough.",
+        account_id="acme-corp"
+    )
+    return {"status": "success", "message": "Demo state reset safely. Hindsight memory bank cleared."}
 
 @router.post("/seed")
 async def seed_demo(db: Session = Depends(get_db)):

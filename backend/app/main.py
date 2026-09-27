@@ -2,8 +2,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.init_db import init_db
-from app.api import auth, accounts, memories, copilot, feedback, demo
-from app.services.hindsight_service import hindsight_service
+from app.api import auth, accounts, memories, copilot, feedback, demo, activity
+from app.services.hindsight_service import hindsight_service, local_memory_store
+from app.config import settings
+from app.db.session import SessionLocal
 from app.models.seed_data import (
     ACME_DEMO_MEMORIES,
     HISTORICAL_CHURN_MEMORIES,
@@ -56,12 +58,41 @@ app.include_router(feedback.router, prefix="", tags=["feedback-compat"])
 app.include_router(demo.router)
 app.include_router(demo.router, prefix="", tags=["demo-compat"])
 
+app.include_router(activity.router)
+app.include_router(activity.router, prefix="", tags=["activity-compat"])
+
 @app.get("/health")
 @app.get("/api/health")
 async def health_check():
+    # 1. Database check
+    db_status = "connected"
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+    except Exception:
+        db_status = "error"
+
+    # 2. Auth check
+    auth_status = "ready" if settings.JWT_SECRET else "missing_secret"
+
+    # 3. Hindsight memory bank check
+    mem_count = len(local_memory_store.memories)
+    hindsight_status = "connected" if mem_count > 0 else "initialized"
+
+    # 4. LLM check
+    llm_status = "ready" if settings.GROQ_API_KEY else "fallback_rule_based"
+
     return {
-        "status": "ok",
-        "database": "connected",
-        "memory_bank": "connected",
-        "llm": "connected"
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+        "authentication": auth_status,
+        "hindsight": {
+            "status": hindsight_status,
+            "bank_id": settings.HINDSIGHT_BANK_ID,
+            "indexed_memories": mem_count
+        },
+        "llm_engine": llm_status,
+        "version": "2.0.0"
     }
+

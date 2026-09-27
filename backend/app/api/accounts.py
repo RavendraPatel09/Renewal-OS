@@ -179,6 +179,17 @@ async def create_interaction(
             acc.status = "attention"
         db.commit()
 
+    # Record audit event
+    from app.api.activity import record_audit_event
+    record_audit_event(
+        db=db,
+        event_type="interaction_retained",
+        title=f"Interaction Retained: {req.type.title()}",
+        description=f"Retained '{req.title}' ({req.fact_type}) into Hindsight Memory Bank.",
+        account_id=account_id,
+        user_id=user.id if user else None
+    )
+
     return InteractionResponse(
         id=interaction.id,
         account_id=interaction.account_id,
@@ -193,6 +204,122 @@ async def create_interaction(
         hindsight_retained=interaction.hindsight_retained,
         hindsight_memory_id=interaction.hindsight_memory_id
     )
+
+@router.get("/{account_id}/observations", response_model=List[dict])
+async def get_account_observations(account_id: str):
+    return hindsight_service.get_observations(account_id)
+
+@router.get("/{account_id}/renewal-brief")
+async def get_renewal_brief(account_id: str, db: Session = Depends(get_db)):
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+    
+    from app.services.agent_service import agent_service
+    from app.api.activity import record_audit_event
+    record_audit_event(
+        db=db,
+        event_type="renewal_brief_generated",
+        title=f"Renewal Brief Prepared for {acc.name}",
+        description=f"Grounded renewal intelligence synthesized from persistent memory bank.",
+        account_id=account_id
+    )
+    return await agent_service.generate_renewal_brief(account_id, acc.name, acc.renewal_days)
+
+@router.get("/{account_id}/meeting-prep")
+async def get_meeting_prep(account_id: str, db: Session = Depends(get_db)):
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+    
+    from app.services.agent_service import agent_service
+    from app.api.activity import record_audit_event
+    record_audit_event(
+        db=db,
+        event_type="meeting_prep_generated",
+        title=f"Meeting Prep Briefing for {acc.name}",
+        description=f"Prepared agenda, open issues, and follow-ups from Hindsight memories.",
+        account_id=account_id
+    )
+    return await agent_service.generate_meeting_prep(account_id, acc.name)
+
+@router.post("/{account_id}/meeting-notes")
+async def add_meeting_notes(
+    account_id: str,
+    req: dict,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional)
+):
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+
+    occurred_at = req.get("date") or datetime.utcnow().strftime("%Y-%m-%d")
+    title = req.get("title") or "Customer Meeting Notes"
+    notes = req.get("notes") or ""
+    participants = req.get("participants") or "CSM & Stakeholders"
+
+    full_content = f"Meeting: {title}\nParticipants: {participants}\nNotes: {notes}"
+    
+    # 1. Save in DB
+    interaction = Interaction(
+        account_id=account_id,
+        user_id=user.id if user else None,
+        type="meeting",
+        title=title,
+        content=full_content,
+        sentiment="neutral",
+        importance="high",
+        occurred_at=occurred_at,
+        source="Meeting Logger",
+        fact_type="experience_fact",
+        hindsight_retained=False
+    )
+    db.add(interaction)
+    db.commit()
+    db.refresh(interaction)
+
+    # 2. Retain to Hindsight
+    try:
+        h_res = await hindsight_service.retain(
+            account_id=account_id,
+            content=full_content,
+            metadata={
+                "id": interaction.id,
+                "interaction_type": "meeting",
+                "fact_type": "experience_fact",
+                "occurred_at": occurred_at,
+                "date": occurred_at,
+                "title": title,
+                "sentiment": "neutral",
+                "importance": "high",
+                "source": "Meeting Logger"
+            }
+        )
+        interaction.hindsight_retained = True
+        interaction.hindsight_memory_id = h_res.get("id", interaction.id)
+        db.commit()
+    except Exception as e:
+        db.commit()
+
+    # 3. Audit event
+    from app.api.activity import record_audit_event
+    record_audit_event(
+        db=db,
+        event_type="meeting_notes_retained",
+        title=f"Meeting Notes Remembered: {title}",
+        description=f"Saved to DB and indexed into Hindsight persistent memory bank.",
+        account_id=account_id,
+        user_id=user.id if user else None
+    )
+
+    return {
+        "status": "success",
+        "message": "Meeting remembered.",
+        "interaction_id": interaction.id,
+        "hindsight_retained": interaction.hindsight_retained,
+        "account_id": account_id
+    }
 
 @router.get("/{account_id}/commitments", response_model=List[CommitmentResponse])
 async def get_account_commitments(account_id: str, db: Session = Depends(get_db)):
@@ -234,6 +361,15 @@ async def create_commitment(
     db.commit()
     db.refresh(commitment)
 
+    from app.api.activity import record_audit_event
+    record_audit_event(
+        db=db,
+        event_type="commitment_created",
+        title=f"New Commitment for {acc.name}",
+        description=f"Recorded '{req.description}' (Due: {req.due_date})",
+        account_id=account_id
+    )
+
     return CommitmentResponse(
         id=commitment.id,
         account_id=commitment.account_id,
@@ -243,3 +379,4 @@ async def create_commitment(
         due_date=commitment.due_date,
         created_at=commitment.created_at.isoformat() if commitment.created_at else None
     )
+

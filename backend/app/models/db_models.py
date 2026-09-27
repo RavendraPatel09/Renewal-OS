@@ -120,3 +120,16 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="feedbacks")
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    account_id = Column(String, nullable=True)
+    event_type = Column(String(50), nullable=False)  # interaction_retained, memory_recalled, reflect_completed, observation_formed, commitment_created, commitment_completed, user_signin, demo_reset, meeting_notes_retained
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

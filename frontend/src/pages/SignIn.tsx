@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from '../components/Logo';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 
 export const SignIn: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
+  const { signin } = useAuth();
+
   const [email, setEmail] = useState('priya@company.com');
-  const [password, setPassword] = useState('••••••••••••');
+  const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please provide both email and password.');
@@ -22,11 +26,18 @@ export const SignIn: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await signin(email, password);
       showToast('Signed in successfully', 'Welcome back to RenewalOS');
-      navigate('/dashboard');
-    }, 800);
+      const destination = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(destination);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Invalid email or password.';
+      setError(msg);
+      showToast('Sign in failed', msg, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

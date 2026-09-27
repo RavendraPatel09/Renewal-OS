@@ -101,7 +101,20 @@ class InteractionResponse(BaseModel):
     hindsight_retained: bool = False
     hindsight_memory_id: Optional[str] = None
 
+# Meeting Notes & Brief Schemas
+class MeetingNotesCreateRequest(BaseModel):
+    title: str
+    date: Optional[str] = None
+    participants: Optional[str] = None
+    notes: str
+
 # Hindsight Memory Models
+class EvolutionStage(BaseModel):
+    date: str
+    label: str
+    detail: str
+    memory_id: Optional[str] = None
+
 class ObservationResponse(BaseModel):
     id: str
     account_id: str
@@ -112,6 +125,11 @@ class ObservationResponse(BaseModel):
     last_confirmed: str
     status: str
     supporting_memory_ids: List[str] = []
+    agent_understanding: Optional[str] = None
+    suggested_action: Optional[str] = None
+    conflicting_evidence: Optional[str] = None
+    related_entities: List[str] = []
+    evolution_stages: List[EvolutionStage] = []
 
 class TemporalStepResponse(BaseModel):
     days_ago: str
@@ -142,23 +160,67 @@ class CopilotQueryRequest(BaseModel):
     include_cross_account: bool = False
     demo_stage: Optional[int] = None
 
+class MemoryTraceStep(BaseModel):
+    step: str
+    description: str
+    status: str = "completed"
+
 class CopilotQueryResponse(BaseModel):
     query_mode: str  # recall or reflect
     summary: str
     risk_score: int
     risk_level: str
+    key_signals: List[str] = []
     observations: List[ObservationResponse] = []
     world_facts: List[str] = []
     experience_facts: List[str] = []
     key_concerns: List[str] = []
     open_promises: List[str] = []
+    open_commitments: List[Dict[str, Any]] = []
     sentiment_trend: str = "stable"
     historical_patterns: List[str] = []
     recommended_action: str
+    recommended_next_steps: List[str] = []
+    uncertainty: Optional[str] = None
+    memory_trace: List[MemoryTraceStep] = []
     supporting_memories: List[Dict[str, Any]] = []
     bank_mission: str
     bank_directives: List[str]
     hindsight_status: str = "connected"
+
+# Renewal Brief & Meeting Prep
+class RenewalBriefResponse(BaseModel):
+    account_id: str
+    account_name: str
+    renewal_date: str
+    days_until_renewal: int
+    current_context: str
+    key_risks: List[str]
+    open_commitments: List[Dict[str, Any]]
+    customer_priorities: List[str]
+    what_changed_recently: List[str]
+    relevant_observations: List[ObservationResponse]
+    recommended_discussion_points: List[str]
+    supporting_evidence_count: int
+
+class MeetingPrepResponse(BaseModel):
+    account_id: str
+    account_name: str
+    what_happened_since_last_meeting: List[str]
+    what_to_ask: List[str]
+    what_to_follow_up_on: List[str]
+    unresolved_issues_to_address: List[str]
+    customer_priorities_now: List[str]
+    recommended_meeting_strategy: str
+
+# Audit Events Schema
+class AuditEventResponse(BaseModel):
+    id: str
+    event_type: str
+    title: str
+    description: str
+    account_id: Optional[str] = None
+    created_at: str
 
 # Feedback Schema
 class FeedbackCreateRequest(BaseModel):
@@ -173,3 +235,4 @@ class FeedbackResponse(BaseModel):
     category: str
     message: str
     created_at: str
+
