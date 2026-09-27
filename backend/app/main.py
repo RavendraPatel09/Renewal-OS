@@ -1,10 +1,34 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import accounts, memories, copilot, demo
+from app.db.init_db import init_db
+from app.api import auth, accounts, memories, copilot, feedback, demo
 from app.services.hindsight_service import hindsight_service
-from app.models.seed_data import ACME_DEMO_MEMORIES, HISTORICAL_CHURN_MEMORIES, HISTORICAL_RENEWED_MEMORIES
+from app.models.seed_data import (
+    ACME_DEMO_MEMORIES,
+    HISTORICAL_CHURN_MEMORIES,
+    HISTORICAL_RENEWED_MEMORIES
+)
 
-app = FastAPI(title="RenewalOS API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables and seed data on startup
+    init_db()
+    # Seed Hindsight memory bank with interaction memories
+    for mem in ACME_DEMO_MEMORIES + HISTORICAL_CHURN_MEMORIES + HISTORICAL_RENEWED_MEMORIES:
+        await hindsight_service.retain(
+            account_id=mem["account_id"],
+            content=mem["content"],
+            metadata=mem
+        )
+    yield
+
+app = FastAPI(
+    title="RenewalOS API",
+    description="Production-grade AI Customer Success Memory Agent API powered by Hindsight",
+    version="2.0.0",
+    lifespan=lifespan
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,25 +38,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(accounts.router)
-app.include_router(memories.router)
-app.include_router(copilot.router)
-app.include_router(demo.router)
+# Mount API routers (both with /api prefix and root for backwards compatibility)
+app.include_router(auth.router)
 
-@app.on_event("startup")
-async def startup_event():
-    # Auto-seed memories on startup so demo is ready out of the box
-    for mem in ACME_DEMO_MEMORIES + HISTORICAL_CHURN_MEMORIES + HISTORICAL_RENEWED_MEMORIES:
-        await hindsight_service.retain(
-            account_id=mem["account_id"],
-            content=mem["content"],
-            metadata=mem
-        )
+app.include_router(accounts.router)
+app.include_router(accounts.router, prefix="", tags=["accounts-compat"])
+
+app.include_router(memories.router)
+app.include_router(memories.router, prefix="", tags=["memories-compat"])
+
+app.include_router(copilot.router)
+app.include_router(copilot.router, prefix="", tags=["copilot-compat"])
+
+app.include_router(feedback.router)
+app.include_router(feedback.router, prefix="", tags=["feedback-compat"])
+
+app.include_router(demo.router)
+app.include_router(demo.router, prefix="", tags=["demo-compat"])
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {
         "status": "ok",
-        "memory": "connected",
+        "database": "connected",
+        "memory_bank": "connected",
         "llm": "connected"
     }

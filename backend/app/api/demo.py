@@ -1,17 +1,27 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.db.init_db import init_db
 from app.services.hindsight_service import hindsight_service
-from app.models.seed_data import SYNTHETIC_ACCOUNTS, ACME_DEMO_MEMORIES, HISTORICAL_CHURN_MEMORIES, HISTORICAL_RENEWED_MEMORIES
+from app.models.db_models import Interaction, Account
+from app.models.seed_data import (
+    SYNTHETIC_ACCOUNTS,
+    ACME_DEMO_MEMORIES,
+    HISTORICAL_CHURN_MEMORIES,
+    HISTORICAL_RENEWED_MEMORIES
+)
 
-router = APIRouter(prefix="/demo", tags=["demo"])
+router = APIRouter(prefix="/api/demo", tags=["demo"])
 
 @router.post("/reset")
 async def reset_demo():
     hindsight_service.reset_memories()
-    return {"status": "success", "message": "Demo state reset. Memories cleared."}
+    return {"status": "success", "message": "Demo state reset. Hindsight memory bank cleared."}
 
 @router.post("/seed")
-async def seed_demo():
+async def seed_demo(db: Session = Depends(get_db)):
     hindsight_service.reset_memories()
+    init_db(db)
     
     # Ingest Acme memories
     for mem in ACME_DEMO_MEMORIES:
@@ -56,7 +66,7 @@ async def inject_acme_stage2():
             content=mem["content"],
             metadata=mem
         )
-    return {"status": "success", "message": "5 Acme memories injected for Stage 2"}
+    return {"status": "success", "message": "5 Acme memories retained into Hindsight for Stage 2"}
 
 @router.post("/inject-cross-account-stage3")
 async def inject_cross_account_stage3():
@@ -66,4 +76,4 @@ async def inject_cross_account_stage3():
             content=mem["content"],
             metadata=mem
         )
-    return {"status": "success", "message": "Cross-account historical renewal memories injected for Stage 3"}
+    return {"status": "success", "message": "Cross-account historical renewal memories retained for Stage 3"}

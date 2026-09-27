@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CustomerAccount, InteractionMemory, BriefingResponse } from '../types';
+import { CustomerAccount, InteractionMemory, BriefingResponse, TemporalStep, KnowledgeGraphData } from '../types';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -19,6 +19,21 @@ export const api = {
     return res.data;
   },
 
+  getAccountTemporal: async (id: string): Promise<TemporalStep[]> => {
+    const res = await axios.get(`${API_BASE}/accounts/${id}/temporal`);
+    return res.data;
+  },
+
+  getAccountGraph: async (id: string): Promise<KnowledgeGraphData> => {
+    const res = await axios.get(`${API_BASE}/accounts/${id}/graph`);
+    return res.data;
+  },
+
+  getMemoryEvolution: async (id: string) => {
+    const res = await axios.get(`${API_BASE}/memories/evolution/${id}`);
+    return res.data;
+  },
+
   getMemories: async (accountId?: string): Promise<InteractionMemory[]> => {
     const res = await axios.get(`${API_BASE}/memories`, {
       params: { account_id: accountId }
@@ -34,12 +49,14 @@ export const api = {
   queryCopilot: async (
     query: string,
     accountId: string = 'acme-corp',
+    mode: 'recall' | 'reflect' = 'reflect',
     includeCrossAccount: boolean = false,
     demoStage?: number
   ): Promise<BriefingResponse> => {
     const res = await axios.post(`${API_BASE}/copilot/query`, {
       query,
       account_id: accountId,
+      mode,
       include_cross_account: includeCrossAccount,
       demo_stage: demoStage
     });

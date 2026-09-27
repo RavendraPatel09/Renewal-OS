@@ -1,19 +1,245 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from typing import List, Optional
-from app.models.schemas import CustomerAccount
-from app.models.seed_data import SYNTHETIC_ACCOUNTS
+from datetime import datetime
+from app.db.session import get_db
+from app.models.db_models import Account, Contact, Interaction, Commitment, User
+from app.models.schemas import (
+    AccountResponse,
+    AccountCreateRequest,
+    InteractionResponse,
+    InteractionCreateRequest,
+    CommitmentResponse,
+    CommitmentCreateRequest,
+    TemporalStepResponse,
+    KnowledgeGraphResponse
+)
+from app.core.security import get_current_user_optional
+from app.services.hindsight_service import hindsight_service
 
-router = APIRouter(prefix="/accounts", tags=["accounts"])
+router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
-# In-memory account list initialized with synthetic data
-account_db = {acc.id: acc for acc in SYNTHETIC_ACCOUNTS}
+@router.get("", response_model=List[AccountResponse])
+async def get_accounts(db: Session = Depends(get_db)):
+    accounts = db.query(Account).all()
+    res = []
+    for acc in accounts:
+        res.append(AccountResponse(
+            id=acc.id,
+            workspace_id=acc.workspace_id,
+            name=acc.name,
+            industry=acc.industry or "Enterprise Software",
+            plan=acc.plan or "Enterprise",
+            renewal_date=acc.renewal_date,
+            renewal_days=acc.renewal_days,
+            status=acc.status,
+            risk_score=acc.risk_score,
+            risk_level=acc.risk_level,
+            open_issues_count=acc.open_issues_count,
+            unresolved_promises_count=acc.unresolved_promises_count,
+            recent_sentiment=acc.recent_sentiment,
+            mrr=acc.mrr,
+            csm_name=acc.csm_name,
+            contacts=[{"id": c.id, "name": c.name, "email": c.email, "role": c.role} for c in acc.contacts],
+            commitments=[{
+                "id": c.id,
+                "account_id": c.account_id,
+                "description": c.description,
+                "owner_name": c.owner_name,
+                "status": c.status,
+                "due_date": c.due_date,
+                "created_at": c.created_at.isoformat() if c.created_at else None
+            } for c in acc.commitments]
+        ))
+    return res
 
-@router.get("", response_model=List[CustomerAccount])
-async def get_accounts():
-    return list(account_db.values())
+@router.get("/{account_id}", response_model=AccountResponse)
+async def get_account(account_id: str, db: Session = Depends(get_db)):
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+    
+    return AccountResponse(
+        id=acc.id,
+        workspace_id=acc.workspace_id,
+        name=acc.name,
+        industry=acc.industry or "Enterprise Software",
+        plan=acc.plan or "Enterprise",
+        renewal_date=acc.renewal_date,
+        renewal_days=acc.renewal_days,
+        status=acc.status,
+        risk_score=acc.risk_score,
+        risk_level=acc.risk_level,
+        open_issues_count=acc.open_issues_count,
+        unresolved_promises_count=acc.unresolved_promises_count,
+        recent_sentiment=acc.recent_sentiment,
+        mrr=acc.mrr,
+        csm_name=acc.csm_name,
+        contacts=[{"id": c.id, "name": c.name, "email": c.email, "role": c.role} for c in acc.contacts],
+        commitments=[{
+            "id": c.id,
+            "account_id": c.account_id,
+            "description": c.description,
+            "owner_name": c.owner_name,
+            "status": c.status,
+            "due_date": c.due_date,
+            "created_at": c.created_at.isoformat() if c.created_at else None
+        } for c in acc.commitments]
+    )
 
-@router.get("/{account_id}", response_model=CustomerAccount)
-async def get_account(account_id: str):
-    if account_id not in account_db:
-        raise HTTPException(status_code=404, detail="Account not found")
-    return account_db[account_id]
+@router.get("/{account_id}/temporal", response_model=List[TemporalStepResponse])
+async def get_account_temporal(account_id: str):
+    return hindsight_service.get_temporal_progression(account_id)
+
+@router.get("/{account_id}/graph", response_model=KnowledgeGraphResponse)
+async def get_account_graph(account_id: str):
+    return hindsight_service.get_knowledge_graph(account_id)
+
+@router.get("/{account_id}/interactions", response_model=List[InteractionResponse])
+async def get_account_interactions(account_id: str, db: Session = Depends(get_db)):
+    interactions = db.query(Interaction).filter(Interaction.account_id == account_id).order_by(Interaction.occurred_at.desc()).all()
+    return [
+        InteractionResponse(
+            id=i.id,
+            account_id=i.account_id,
+            type=i.type,
+            title=i.title,
+            content=i.content,
+            sentiment=i.sentiment,
+            importance=i.importance,
+            occurred_at=i.occurred_at,
+            source=i.source,
+            fact_type=i.fact_type,
+            hindsight_retained=i.hindsight_retained,
+            hindsight_memory_id=i.hindsight_memory_id
+        ) for i in interactions
+    ]
+
+@router.post("/{account_id}/interactions", response_model=InteractionResponse)
+async def create_interaction(
+    account_id: str,
+    req: InteractionCreateRequest,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional)
+):
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+    
+    occurred_at = req.occurred_at or datetime.utcnow().strftime("%Y-%m-%d")
+    
+    # 1. Save to database
+    interaction = Interaction(
+        account_id=account_id,
+        user_id=user.id if user else None,
+        type=req.type,
+        title=req.title,
+        content=req.content,
+        sentiment=req.sentiment or "neutral",
+        importance=req.importance or "medium",
+        occurred_at=occurred_at,
+        source=req.source or "Manual Entry",
+        fact_type=req.fact_type or "world_fact",
+        hindsight_retained=False
+    )
+    db.add(interaction)
+    db.commit()
+    db.refresh(interaction)
+
+    # 2. Retain in Hindsight
+    try:
+        hindsight_res = await hindsight_service.retain(
+            account_id=account_id,
+            content=f"{req.title}: {req.content}",
+            metadata={
+                "id": interaction.id,
+                "interaction_type": req.type,
+                "fact_type": req.fact_type or "world_fact",
+                "occurred_at": occurred_at,
+                "date": occurred_at,
+                "title": req.title,
+                "sentiment": req.sentiment or "neutral",
+                "importance": req.importance or "medium",
+                "source": req.source or "Manual Entry"
+            }
+        )
+        interaction.hindsight_retained = True
+        interaction.hindsight_memory_id = hindsight_res.get("id", interaction.id)
+        db.commit()
+    except Exception as e:
+        # Graceful failure behavior: interaction saved in DB, flag hindsight as not retained
+        db.commit()
+
+    # Update account open issues count or sentiment if critical
+    if req.sentiment == "negative":
+        acc.recent_sentiment = "declining"
+        acc.risk_score = min(acc.risk_score + 8, 95)
+        if acc.risk_score > 70:
+            acc.risk_level = "high"
+            acc.status = "attention"
+        db.commit()
+
+    return InteractionResponse(
+        id=interaction.id,
+        account_id=interaction.account_id,
+        type=interaction.type,
+        title=interaction.title,
+        content=interaction.content,
+        sentiment=interaction.sentiment,
+        importance=interaction.importance,
+        occurred_at=interaction.occurred_at,
+        source=interaction.source,
+        fact_type=interaction.fact_type,
+        hindsight_retained=interaction.hindsight_retained,
+        hindsight_memory_id=interaction.hindsight_memory_id
+    )
+
+@router.get("/{account_id}/commitments", response_model=List[CommitmentResponse])
+async def get_account_commitments(account_id: str, db: Session = Depends(get_db)):
+    commitments = db.query(Commitment).filter(Commitment.account_id == account_id).all()
+    return [
+        CommitmentResponse(
+            id=c.id,
+            account_id=c.account_id,
+            description=c.description,
+            owner_name=c.owner_name,
+            status=c.status,
+            due_date=c.due_date,
+            created_at=c.created_at.isoformat() if c.created_at else None
+        ) for c in commitments
+    ]
+
+@router.post("/{account_id}/commitments", response_model=CommitmentResponse)
+async def create_commitment(
+    account_id: str,
+    req: CommitmentCreateRequest,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional)
+):
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail="Account not found.")
+    
+    commitment = Commitment(
+        account_id=account_id,
+        description=req.description,
+        owner_id=user.id if user else None,
+        owner_name=req.owner_name or "Priya Sharma",
+        status=req.status or "open",
+        due_date=req.due_date
+    )
+    db.add(commitment)
+    if req.status == "overdue":
+        acc.unresolved_promises_count += 1
+    db.commit()
+    db.refresh(commitment)
+
+    return CommitmentResponse(
+        id=commitment.id,
+        account_id=commitment.account_id,
+        description=commitment.description,
+        owner_name=commitment.owner_name,
+        status=commitment.status,
+        due_date=commitment.due_date,
+        created_at=commitment.created_at.isoformat() if commitment.created_at else None
+    )

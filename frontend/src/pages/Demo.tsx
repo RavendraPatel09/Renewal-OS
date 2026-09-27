@@ -3,25 +3,34 @@ import { api } from '../services/api';
 import { BriefingResponse } from '../types';
 import { CopilotResponseCard } from '../components/CopilotResponseCard';
 import { MemoryGrowthWidget } from '../components/MemoryGrowthWidget';
-import { PlayCircle, RefreshCw, PlusCircle, History, Sparkles, CheckCircle2 } from 'lucide-react';
+import { PlayCircle, PlusCircle, History, Sparkles, CheckCircle2, Clock, Database, ArrowRight } from 'lucide-react';
 
 export const Demo: React.FC = () => {
-  const [stage, setStage] = useState<number>(1);
+  const [step, setStep] = useState<number>(1);
   const [memoryCount, setMemoryCount] = useState<number>(0);
   const [briefing, setBriefing] = useState<BriefingResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [stageMessage, setStageMessage] = useState<string>('Stage 1: Cold Start initialized (0 memories)');
+  const [statusMsg, setStatusMsg] = useState<string>('Step 1: RETAIN single memory');
 
-  const question = "Prepare me for Acme's renewal.";
-
-  const handleResetStage1 = async () => {
+  const handleStep1Retain = async () => {
     setLoading(true);
     try {
       await api.resetDemo();
-      setStage(1);
-      setMemoryCount(0);
+      await api.addMemory({
+        account_id: 'acme-corp',
+        interaction_type: 'sales_call',
+        fact_type: 'world_fact',
+        date: '2026-06-04',
+        summary: 'Acme reported an SSO issue during sales call.',
+        content: 'Acme expressed concern about pricing and stated SAML SSO is required.',
+        sentiment: 'negative',
+        importance: 'medium',
+        source: 'Salesforce Gong'
+      });
+      setStep(1);
+      setMemoryCount(1);
+      setStatusMsg('Step 1: Retained single memory into Hindsight Memory Bank.');
       setBriefing(null);
-      setStageMessage('Stage 1: Cold Start initialized (0 memories)');
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,10 +38,12 @@ export const Demo: React.FC = () => {
     }
   };
 
-  const handleRunStage1Query = async () => {
+  const handleStep2Recall = async () => {
     setLoading(true);
     try {
-      const res = await api.queryCopilot(question, 'acme-corp', false, 1);
+      const res = await api.queryCopilot("What problems has Acme had with SSO?", 'acme-corp', 'recall', false);
+      setStep(2);
+      setStatusMsg('Step 2: Executed Hindsight RECALL (Factual Search across memory bank).');
       setBriefing(res);
     } catch (err) {
       console.error(err);
@@ -41,14 +52,14 @@ export const Demo: React.FC = () => {
     }
   };
 
-  const handleStage2AddMemories = async () => {
+  const handleStep3Observe = async () => {
     setLoading(true);
     try {
       await api.injectAcmeStage2();
-      setStage(2);
+      setStep(3);
       setMemoryCount(5);
-      setStageMessage('Stage 2: 5 Acme customer memories injected into Hindsight!');
-      const res = await api.queryCopilot(question, 'acme-corp', false, 2);
+      setStatusMsg('Step 3: Consolidated Hindsight Observation formed: "Persistent SSO dissatisfaction".');
+      const res = await api.queryCopilot("What observations have consolidated for Acme?", 'acme-corp', 'reflect', false);
       setBriefing(res);
     } catch (err) {
       console.error(err);
@@ -57,14 +68,42 @@ export const Demo: React.FC = () => {
     }
   };
 
-  const handleStage3EnableCrossAccount = async () => {
+  const handleStep4Temporal = async () => {
+    setLoading(true);
+    try {
+      setStep(4);
+      setStatusMsg('Step 4: Executed Hindsight Temporal Recall ("How has Acme\'s relationship changed over the last 60 days?").');
+      const res = await api.queryCopilot("How has Acme's relationship changed over the last 60 days?", 'acme-corp', 'reflect', false);
+      setBriefing(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStep5Reflect = async () => {
+    setLoading(true);
+    try {
+      setStep(5);
+      setStatusMsg('Step 5: Executed Hindsight REFLECT ("What should I do before the renewal?").');
+      const res = await api.queryCopilot("What should I do before the renewal?", 'acme-corp', 'reflect', false);
+      setBriefing(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStep6LearnAndAct = async () => {
     setLoading(true);
     try {
       await api.injectCrossAccountStage3();
-      setStage(3);
+      setStep(6);
       setMemoryCount(18);
-      setStageMessage('Stage 3: Cross-account historical renewal memories active!');
-      const res = await api.queryCopilot("Is Acme showing a known churn pattern?", 'acme-corp', true, 3);
+      setStatusMsg('Step 6 & 7: LEARN & ACT across historical renewal accounts (NorthStar & NovaHealth matched).');
+      const res = await api.queryCopilot("Have we seen this pattern before in churned accounts?", 'acme-corp', 'reflect', true);
       setBriefing(res);
     } catch (err) {
       console.error(err);
@@ -77,9 +116,9 @@ export const Demo: React.FC = () => {
     setLoading(true);
     try {
       const res = await api.seedDemo();
-      setStage(3);
+      setStep(6);
       setMemoryCount(res.memories_count || 176);
-      setStageMessage(`Full Hackathon Environment Ready! (${res.memories_count || 176} memories across 8 accounts)`);
+      setStatusMsg(`Full Hackathon Environment Ready! (${res.memories_count || 176} memories across 8 accounts)`);
     } catch (err) {
       console.error(err);
     } finally {
@@ -93,11 +132,11 @@ export const Demo: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl shadow-lg border border-slate-800">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30 mb-2">
-            <PlayCircle className="w-3.5 h-3.5" /> Hackathon Demo Experience
+            <PlayCircle className="w-3.5 h-3.5" /> Full Hindsight Demo Flow
           </div>
-          <h1 className="text-3xl font-extrabold">Watch RenewalOS Learn</h1>
+          <h1 className="text-3xl font-extrabold">Retain $\rightarrow$ Recall $\rightarrow$ Observe $\rightarrow$ Temporal $\rightarrow$ Reflect $\rightarrow$ Learn $\rightarrow$ Act</h1>
           <p className="text-slate-300 text-sm mt-1">
-            Same customer. Same question. Dramatically better answer as memories accumulate.
+            Complete demonstration of Hindsight's native memory architecture for the hackathon judges.
           </p>
         </div>
 
@@ -106,114 +145,86 @@ export const Demo: React.FC = () => {
           disabled={loading}
           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-2 shrink-0"
         >
-          <Sparkles className="w-4 h-4" /> Load Full Hackathon Seed Data
+          <Sparkles className="w-4 h-4" /> Load Seed Dataset
         </button>
       </div>
 
       {/* Memory Growth Bar */}
       <MemoryGrowthWidget count={memoryCount} />
 
-      {/* Interactive 3-Stage Stepper Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Stage 1 */}
-        <div className={`p-5 rounded-xl border transition space-y-3 ${
-          stage === 1 ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-md ring-2 ring-indigo-500/20' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-80'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Stage 1</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">0 Memories</span>
-          </div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-base">Cold Start</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Query RenewalOS with no customer context. Standard LLM fallback.
-          </p>
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={handleResetStage1}
-              disabled={loading}
-              className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg hover:bg-slate-300 transition"
-            >
-              Reset 0
-            </button>
-            <button
-              onClick={handleRunStage1Query}
-              disabled={loading}
-              className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition"
-            >
-              Ask RenewalOS
-            </button>
-          </div>
-        </div>
+      {/* Interactive 7-Step Hackathon Progression Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-center text-xs font-bold">
+        <button
+          onClick={handleStep1Retain}
+          disabled={loading}
+          className={`p-3 rounded-xl border transition ${step === 1 ? 'bg-indigo-600 text-white border-indigo-500 shadow' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}
+        >
+          1. RETAIN
+        </button>
 
-        {/* Stage 2 */}
-        <div className={`p-5 rounded-xl border transition space-y-3 ${
-          stage === 2 ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-md ring-2 ring-indigo-500/20' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-80'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-500">Stage 2</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400">5 Memories</span>
-          </div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-base">Customer Context</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Inject 5 Acme interactions (sales, support ticket, QBR promise).
-          </p>
-          <button
-            onClick={handleStage2AddMemories}
-            disabled={loading}
-            className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5"
-          >
-            <PlusCircle className="w-4 h-4" /> Add 5 Customer Memories
-          </button>
-        </div>
+        <button
+          onClick={handleStep2Recall}
+          disabled={loading}
+          className={`p-3 rounded-xl border transition ${step === 2 ? 'bg-emerald-600 text-white border-emerald-500 shadow' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}
+        >
+          2. RECALL
+        </button>
 
-        {/* Stage 3 */}
-        <div className={`p-5 rounded-xl border transition space-y-3 ${
-          stage === 3 ? 'bg-white dark:bg-slate-900 border-indigo-500 shadow-md ring-2 ring-indigo-500/20' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-80'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-500">Stage 3</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400">Cross-Account</span>
-          </div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-base">Learned Patterns</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Enable cross-account historical churn memories & pattern match.
-          </p>
-          <button
-            onClick={handleStage3EnableCrossAccount}
-            disabled={loading}
-            className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5"
-          >
-            <History className="w-4 h-4" /> Enable Cross-Account Learning
-          </button>
-        </div>
+        <button
+          onClick={handleStep3Observe}
+          disabled={loading}
+          className={`p-3 rounded-xl border transition ${step === 3 ? 'bg-amber-600 text-white border-amber-500 shadow' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}
+        >
+          3. OBSERVE
+        </button>
+
+        <button
+          onClick={handleStep4Temporal}
+          disabled={loading}
+          className={`p-3 rounded-xl border transition ${step === 4 ? 'bg-amber-700 text-white border-amber-600 shadow' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}
+        >
+          4. TEMPORAL
+        </button>
+
+        <button
+          onClick={handleStep5Reflect}
+          disabled={loading}
+          className={`p-3 rounded-xl border transition ${step === 5 ? 'bg-purple-600 text-white border-purple-500 shadow' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}
+        >
+          5. REFLECT
+        </button>
+
+        <button
+          onClick={handleStep6LearnAndAct}
+          disabled={loading}
+          className={`p-3 rounded-xl border transition ${step === 6 ? 'bg-rose-600 text-white border-rose-500 shadow' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'}`}
+        >
+          6 & 7. LEARN & ACT
+        </button>
       </div>
 
-      {/* Current Status Message Bar */}
-      <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-        <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" />
-        <span>{stageMessage}</span>
-      </div>
-
-      {/* Question & Live Result Display */}
-      <div className="space-y-4">
-        <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-semibold text-slate-900 dark:text-white flex items-center justify-between">
-          <span>Target Question: "{stage === 3 ? 'Is Acme showing a known churn pattern?' : question}"</span>
-          <span className="text-xs text-indigo-500 font-bold uppercase tracking-wider">Grounded Output</span>
+      {/* Current Status Banner */}
+      <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0" />
+          <span>{statusMsg}</span>
         </div>
-
-        {loading ? (
-          <div className="p-12 text-center text-slate-500 space-y-2">
-            <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
-            <p className="text-xs font-medium">Recalling Hindsight memories and executing AI reasoning...</p>
-          </div>
-        ) : briefing ? (
-          <CopilotResponseCard briefing={briefing} />
-        ) : (
-          <div className="p-12 text-center text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
-            Click any stage button above to run the live hackathon demo comparison.
-          </div>
-        )}
+        <span className="text-[10px] uppercase font-bold text-slate-400">Step {step} of 6</span>
       </div>
+
+      {/* Briefing Output Card */}
+      {loading ? (
+        <div className="p-12 text-center text-slate-500 space-y-2">
+          <Sparkles className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+          <p className="text-xs font-medium">Executing Hindsight memory pipeline stage...</p>
+        </div>
+      ) : briefing ? (
+        <CopilotResponseCard briefing={briefing} />
+      ) : (
+        <div className="p-12 text-center text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+          Click step 1 through 6 above to execute the complete live Hindsight hackathon demo.
+        </div>
+      )}
     </div>
   );
 };

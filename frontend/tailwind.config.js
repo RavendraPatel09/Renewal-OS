@@ -6,7 +6,43 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        brand: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+        },
+        slate: {
+          750: '#151921',
+          850: '#0f1217',
+          950: '#0b0d10'
+        }
+      },
+      fontFamily: {
+        sans: [
+          'Inter',
+          'Geist',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'sans-serif'
+        ]
+      },
+      boxShadow: {
+        'subtle': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'panel': '0 4px 20px -2px rgba(0, 0, 0, 0.08)',
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.08)'
+      }
+    },
   },
   plugins: [],
 }

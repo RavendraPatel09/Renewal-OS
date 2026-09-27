@@ -1,6 +1,17 @@
 from typing import List, Dict, Any
 from app.models.schemas import CustomerAccount
 
+BANK_MISSION = "You are the persistent customer-success memory for RenewalOS. Maintain an evidence-grounded understanding of customer relationships over time. Prioritize unresolved customer problems, commitments, sentiment changes, product needs, renewal context, and lessons from previous customer interactions. Never invent customer facts."
+
+BANK_DIRECTIVES = [
+    "Always distinguish facts from recommendations.",
+    "Never invent a customer interaction.",
+    "When making a recommendation, identify the memories supporting it.",
+    "Prioritize recent evidence when it conflicts with older information.",
+    "When information is uncertain or contradictory, explicitly state the uncertainty.",
+    "For risk assessments, explain the evidence rather than presenting an unexplained score."
+]
+
 SYNTHETIC_ACCOUNTS = [
     CustomerAccount(
         id="acme-corp",
@@ -116,11 +127,93 @@ SYNTHETIC_ACCOUNTS = [
     )
 ]
 
+ACME_WORLD_FACTS = [
+    "Acme Corp uses Enterprise Tier ($120k ARR).",
+    "Acme Corp deployment has 450 active users across Engineering and Product.",
+    "Acme Corp requires SAML Okta SSO authentication for security compliance.",
+    "Acme Corp contract renewal date is in 14 days."
+]
+
+ACME_EXPERIENCE_FACTS = [
+    "RenewalOS flagged unresolved support ticket #4821 escalated to Tier 3.",
+    "Product Team promised dedicated SAML error fix v2.4 during July QBR.",
+    "CSM Priya Sharma scheduled executive escalation call with VP Engineering."
+]
+
+ACME_OBSERVATIONS = [
+    {
+        "id": "obs-acme-sso",
+        "account_id": "acme-corp",
+        "title": "Persistent SSO Dissatisfaction & Missed Product Commitment",
+        "description": "Acme Corp has experienced recurring SAML SSO authentication failures across multiple interactions despite an explicit QBR commitment from engineering to resolve it by Q3.",
+        "evidence_count": 4,
+        "first_detected": "2026-07-02",
+        "last_confirmed": "2026-08-11",
+        "status": "Active Risk",
+        "supporting_memory_ids": ["acme-mem-2", "acme-mem-3", "acme-mem-4", "acme-mem-5", "acme-mem-6"]
+    }
+]
+
+ACME_TEMPORAL_PROGRESSION = [
+    {
+        "days_ago": "60 DAYS AGO",
+        "status_color": "green",
+        "label": "Stable Relationship",
+        "description": "Onboarding kickoff completed. SSO requirement submitted as high priority."
+    },
+    {
+        "days_ago": "45 DAYS AGO",
+        "status_color": "yellow",
+        "label": "SSO Friction",
+        "description": "Support Ticket #4821 opened: Okta SSO token authentication failures in production."
+    },
+    {
+        "days_ago": "30 DAYS AGO",
+        "status_color": "orange",
+        "label": "QBR Commitment",
+        "description": "Engineering promised dedicated v2.4 SSO bug patch by end of quarter."
+    },
+    {
+        "days_ago": "15 DAYS AGO",
+        "status_color": "red",
+        "label": "Overdue Commitment",
+        "description": "Support Ticket #5102 logged: SSO issue remains unresolved for 40% of users."
+    },
+    {
+        "days_ago": "TODAY",
+        "status_color": "darkred",
+        "label": "Renewal Risk Escalation",
+        "description": "VP Engineering Email: Renewal conditioned on immediate SSO stability & price review."
+    }
+]
+
+ACME_KNOWLEDGE_GRAPH = {
+    "nodes": [
+        {"id": "acme-corp", "label": "Acme Corp", "type": "account"},
+        {"id": "sso", "label": "SAML Okta SSO", "type": "topic"},
+        {"id": "priya", "label": "Priya Sharma (CSM)", "type": "person"},
+        {"id": "vp-eng", "label": "VP Engineering (Acme)", "type": "person"},
+        {"id": "ticket-4821", "label": "Ticket #4821 / #5102", "type": "ticket"},
+        {"id": "qbr-promise", "label": "QBR SAML v2.4 Promise", "type": "topic"},
+        {"id": "engineering", "label": "Tier 3 Engineering", "type": "department"}
+    ],
+    "links": [
+        {"source": "acme-corp", "target": "sso", "label": "requires"},
+        {"source": "acme-corp", "target": "priya", "label": "managed by"},
+        {"source": "acme-corp", "target": "vp-eng", "label": "sponsored by"},
+        {"source": "sso", "target": "ticket-4821", "label": "blocked by"},
+        {"source": "ticket-4821", "target": "engineering", "label": "escalated to"},
+        {"source": "qbr-promise", "target": "ticket-4821", "label": "promised fix for"},
+        {"source": "vp-eng", "target": "qbr-promise", "label": "demands"}
+    ]
+}
+
 ACME_DEMO_MEMORIES = [
     {
         "id": "acme-mem-1",
         "account_id": "acme-corp",
         "interaction_type": "sales_call",
+        "fact_type": "world_fact",
         "date": "2026-06-04",
         "summary": "Pricing objection raised during initial close.",
         "content": "Customer expressed hesitation regarding price-to-value ratio for Enterprise tier and requested custom SLAs.",
@@ -132,6 +225,7 @@ ACME_DEMO_MEMORIES = [
         "id": "acme-mem-2",
         "account_id": "acme-corp",
         "interaction_type": "meeting",
+        "fact_type": "world_fact",
         "date": "2026-06-18",
         "summary": "Onboarding kickoff: Requested SAML/Okta SSO support.",
         "content": "CTO specified SAML Okta integration as a mandatory requirement for company-wide deployment.",
@@ -143,6 +237,7 @@ ACME_DEMO_MEMORIES = [
         "id": "acme-mem-3",
         "account_id": "acme-corp",
         "interaction_type": "support_ticket",
+        "fact_type": "experience_fact",
         "date": "2026-07-02",
         "summary": "Support Ticket #4821: SSO configuration failing in production.",
         "content": "Users unable to authenticate via Okta SSO. Ticket escalated to Tier 3 engineering.",
@@ -154,6 +249,7 @@ ACME_DEMO_MEMORIES = [
         "id": "acme-mem-4",
         "account_id": "acme-corp",
         "interaction_type": "qbr",
+        "fact_type": "experience_fact",
         "date": "2026-07-15",
         "summary": "QBR Review: Promised dedicated SSO fix by end of quarter.",
         "content": "Product team committed during QBR to release patch v2.4 with enhanced SAML error handling by end of Q3.",
@@ -165,6 +261,7 @@ ACME_DEMO_MEMORIES = [
         "id": "acme-mem-5",
         "account_id": "acme-corp",
         "interaction_type": "support_ticket",
+        "fact_type": "experience_fact",
         "date": "2026-08-04",
         "summary": "Support Ticket #5102: SSO issue remains unresolved.",
         "content": "Customer reported repeated SSO token expiration errors still blocking 40% of active users.",
@@ -176,6 +273,7 @@ ACME_DEMO_MEMORIES = [
         "id": "acme-mem-6",
         "account_id": "acme-corp",
         "interaction_type": "email",
+        "fact_type": "experience_fact",
         "date": "2026-08-11",
         "summary": "VP Engineering Email: Frustration over repeated delays.",
         "content": "Email from VP Engineering: 'We are reconsidering our upcoming renewal if SSO stability and contract pricing aren't resolved immediately.'",
@@ -190,6 +288,7 @@ HISTORICAL_CHURN_MEMORIES = [
         "id": "northstar-mem-1",
         "account_id": "northstar-logistics",
         "interaction_type": "support_ticket",
+        "fact_type": "experience_fact",
         "date": "2026-02-10",
         "summary": "Unresolved API timeout ticket #3109 left open 45 days.",
         "content": "NorthStar logged critical API timeouts. Support failed to patch within SLA timeline.",
@@ -201,6 +300,7 @@ HISTORICAL_CHURN_MEMORIES = [
         "id": "northstar-mem-2",
         "account_id": "northstar-logistics",
         "interaction_type": "email",
+        "fact_type": "world_fact",
         "date": "2026-03-01",
         "summary": "CFO email objecting to tier renewal price increase.",
         "content": "CFO cited missed feature commitments and refused renewal terms without discount.",
@@ -212,6 +312,7 @@ HISTORICAL_CHURN_MEMORIES = [
         "id": "novahealth-mem-1",
         "account_id": "novahealth",
         "interaction_type": "qbr",
+        "fact_type": "experience_fact",
         "date": "2026-04-12",
         "summary": "HIPAA compliance integration promise missed by engineering.",
         "content": "NovaHealth was promised custom HIPAA audit log exports by April QBR. Deliverable was delayed twice.",
@@ -223,6 +324,7 @@ HISTORICAL_CHURN_MEMORIES = [
         "id": "novahealth-mem-2",
         "account_id": "novahealth",
         "interaction_type": "email",
+        "fact_type": "experience_fact",
         "date": "2026-05-20",
         "summary": "Notice of non-renewal due to unfulfilled product promises.",
         "content": "NovaHealth officially cancelled renewal stating unresolved security ticket and missed commitments.",
@@ -237,6 +339,7 @@ HISTORICAL_RENEWED_MEMORIES = [
         "id": "vantage-mem-1",
         "account_id": "vantage-retail",
         "interaction_type": "meeting",
+        "fact_type": "experience_fact",
         "date": "2026-05-10",
         "summary": "Executive escalation meeting with VP of Product resolved blocker.",
         "content": "VP of CS met with Vantage VP of Tech, agreed on a 14-day dedicated engineering sprint which fixed inventory sync.",
@@ -248,6 +351,7 @@ HISTORICAL_RENEWED_MEMORIES = [
         "id": "bluepeak-mem-1",
         "account_id": "bluepeak-systems",
         "interaction_type": "renewal_call",
+        "fact_type": "experience_fact",
         "date": "2026-04-15",
         "summary": "Signed 2-year expansion contract following clear escalation roadmap.",
         "content": "BluePeak renewed early with +20% seat expansion after exec sponsor intervention.",

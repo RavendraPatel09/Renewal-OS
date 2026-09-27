@@ -1,65 +1,127 @@
+import asyncio
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.db.init_db import init_db
+from app.services.hindsight_service import hindsight_service
+from app.models.seed_data import (
+    ACME_DEMO_MEMORIES,
+    HISTORICAL_CHURN_MEMORIES,
+    HISTORICAL_RENEWED_MEMORIES
+)
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_module():
+    init_db()
+    async def seed_hindsight():
+        for mem in ACME_DEMO_MEMORIES + HISTORICAL_CHURN_MEMORIES + HISTORICAL_RENEWED_MEMORIES:
+            await hindsight_service.retain(
+                account_id=mem["account_id"],
+                content=mem["content"],
+                metadata=mem
+            )
+    asyncio.run(seed_hindsight())
 
 client = TestClient(app)
 
 def test_health():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-
-def test_get_accounts():
-    response = client.get("/accounts")
-    assert response.status_code == 200
-    assert len(response.json()) >= 8
-
-def test_get_acme_account():
-    response = client.get("/accounts/acme-corp")
-    assert response.status_code == 200
-    assert response.json()["name"] == "Acme Corp"
-
-def test_memory_ingestion_and_recall():
-    payload = {
-        "account_id": "acme-corp",
-        "interaction_type": "email",
-        "date": "2026-08-25",
-        "summary": "Followup email on pricing renewal",
-        "content": "Customer asked if volume discount can be applied.",
-        "sentiment": "neutral",
-        "importance": "medium",
-        "source": "Gmail"
-    }
-    res = client.post("/memories", json=payload)
+    res = client.get("/health")
     assert res.status_code == 200
-    assert res.json()["status"] == "success"
+    assert res.json()["status"] == "ok"
+    assert res.json()["database"] == "connected"
 
-    rec_res = client.get("/memories?account_id=acme-corp")
-    assert rec_res.status_code == 200
-    assert len(rec_res.json()) >= 1
+def test_auth_flow():
+    # 1. Signin with default seed user
+    login_res = client.post("/api/auth/signin", json={
+        "email": "priya@company.com",
+        "password": "password123"
+    })
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+    assert token is not None
 
-def test_copilot_query():
-    query_payload = {
-        "account_id": "acme-corp",
-        "query": "Prepare me for Acme's renewal",
-        "include_cross_account": True
-    }
-    res = client.post("/copilot/query", json=query_payload)
+    # 2. Get profile with token
+    me_res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 200
+    assert me_res.json()["email"] == "priya@company.com"
+
+    # 3. Invalid credentials test
+    bad_login = client.post("/api/auth/signin", json={
+        "email": "priya@company.com",
+        "password": "wrongpassword"
+    })
+    assert bad_login.status_code == 401
+
+def test_accounts_api():
+    res = client.get("/api/accounts")
     assert res.status_code == 200
     data = res.json()
-    assert "risk_score" in data
-    assert "recommended_action" in data
-    assert len(data["supporting_memories"]) > 0
-
-def test_demo_reset_and_inject():
-    reset_res = client.post("/demo/reset")
-    assert reset_res.status_code == 200
+    assert len(data) >= 8
     
-    stage1_query = client.post("/copilot/query", json={"account_id": "acme-corp", "query": "Prepare me for Acme's renewal", "demo_stage": 1})
-    assert stage1_query.json()["risk_score"] == 50
+    # Check Acme
+    acme_res = client.get("/api/accounts/acme-corp")
+    assert acme_res.status_code == 200
+    assert acme_res.json()["name"] == "Acme Corp"
 
-    inject_res = client.post("/demo/inject-acme-stage2")
-    assert inject_res.status_code == 200
+def test_create_interaction_and_retain():
+    payload = {
+        "type": "support",
+        "title": "SSO authentication repeated timeout",
+        "content": "Customer VP Engineering reported users getting 504 on SAML login callback.",
+        "sentiment": "negative",
+        "importance": "high",
+        "source": "Zendesk",
+        "fact_type": "experience_fact"
+    }
+    res = client.post("/api/accounts/acme-corp/interactions", json=payload)
+    assert res.status_code == 200
+    assert res.json()["hindsight_retained"] is True
 
-    stage2_query = client.post("/copilot/query", json={"account_id": "acme-corp", "query": "Prepare me for Acme's renewal", "demo_stage": 2})
-    assert stage2_query.json()["risk_score"] > 50
+    # Retrieve interactions
+    list_res = client.get("/api/accounts/acme-corp/interactions")
+    assert list_res.status_code == 200
+    assert len(list_res.json()) >= 1
+
+def test_copilot_recall_and_reflect():
+    # Recall Mode (Factual)
+    recall_res = client.post("/api/copilot/query", json={
+        "account_id": "acme-corp",
+        "query": "What did Acme report regarding SSO?",
+        "mode": "recall"
+    })
+    assert recall_res.status_code == 200
+    assert recall_res.json()["query_mode"] == "recall"
+
+    # Reflect Mode (Reasoning)
+    reflect_res = client.post("/api/copilot/query", json={
+        "account_id": "acme-corp",
+        "query": "Should I be concerned about Acme's renewal?",
+        "mode": "reflect",
+        "include_cross_account": True
+    })
+    assert reflect_res.status_code == 200
+    data = reflect_res.json()
+    assert data["query_mode"] == "reflect"
+    assert data["risk_score"] > 0
+    assert len(data["supporting_memories"]) > 0
+    assert len(data["bank_directives"]) > 0
+
+def test_feedback_api():
+    res = client.post("/api/feedback", json={
+        "rating": "excellent",
+        "category": "copilot",
+        "message": "The Hindsight reflection and observation evolution is super helpful for CSMs!",
+        "email": "priya@company.com"
+    })
+    assert res.status_code == 200
+    assert res.json()["rating"] == "excellent"
+
+def test_demo_stages():
+    # Reset
+    reset_res = client.post("/api/demo/reset")
+    assert reset_res.status_code == 200
+
+    # Seed
+    seed_res = client.post("/api/demo/seed")
+    assert seed_res.status_code == 200
+    assert seed_res.json()["memories_count"] > 0
