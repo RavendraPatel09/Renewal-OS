@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { CustomerAccount } from '../types';
-import { Search, Filter, ShieldAlert, ArrowUpRight, Users } from 'lucide-react';
+import { Search, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const Accounts: React.FC = () => {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -18,129 +20,152 @@ export const Accounts: React.FC = () => {
   }, []);
 
   const filtered = accounts.filter(acc => {
-    const matchesSearch = acc.name.toLowerCase().includes(search.toLowerCase());
-    if (filter === 'risk') return matchesSearch && acc.risk_level === 'high';
+    const matchesSearch = acc.name.toLowerCase().includes(search.toLowerCase()) ||
+      (acc.industry && acc.industry.toLowerCase().includes(search.toLowerCase()));
+    if (filter === 'attention') return matchesSearch && (acc.risk_level === 'high' || acc.unresolved_promises_count > 0);
+    if (filter === 'healthy') return matchesSearch && acc.risk_level === 'low';
     if (filter === 'renewed') return matchesSearch && acc.status === 'renewed';
-    if (filter === 'churned') return matchesSearch && acc.status === 'churned';
     return matchesSearch;
   });
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18 }}
+      className="space-y-5 max-w-5xl"
+    >
+      {/* Top Header & Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Customer Accounts</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Accounts
+          </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Persistent memory intelligence across 42 portfolio accounts.
+            Portfolio directory with persistent memory history and renewal timelines.
           </p>
         </div>
 
-        {/* Filters & Search */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Search and Filters */}
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
             <input
               type="text"
-              placeholder="Search account name..."
+              placeholder="Search accounts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="pl-8 pr-3 py-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-600 w-48"
             />
           </div>
 
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1 rounded-lg transition ${filter === 'all' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 font-bold shadow-subtle' : ''}`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilter('risk')}
-              className={`px-3 py-1 rounded-lg transition ${filter === 'risk' ? 'bg-white dark:bg-slate-900 text-rose-600 font-bold shadow-subtle' : ''}`}
-            >
-              High Risk
-            </button>
-            <button
-              onClick={() => setFilter('renewed')}
-              className={`px-3 py-1 rounded-lg transition ${filter === 'renewed' ? 'bg-white dark:bg-slate-900 text-emerald-600 font-bold shadow-subtle' : ''}`}
-            >
-              Renewed
-            </button>
-            <button
-              onClick={() => setFilter('churned')}
-              className={`px-3 py-1 rounded-lg transition ${filter === 'churned' ? 'bg-white dark:bg-slate-900 text-slate-400 font-bold shadow-subtle' : ''}`}
-            >
-              Churned
-            </button>
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'attention', label: 'Attention' },
+              { id: 'healthy', label: 'Healthy' },
+              { id: 'renewed', label: 'Renewed' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition ${
+                  filter === tab.id
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Account Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-panel">
+      {/* Clean Table View */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <th className="px-6 py-3.5">Account Name</th>
-              <th className="px-6 py-3.5">Tier</th>
-              <th className="px-6 py-3.5">Renewal</th>
-              <th className="px-6 py-3.5">Risk Score</th>
-              <th className="px-6 py-3.5">Open Issues</th>
-              <th className="px-6 py-3.5">Status</th>
-              <th className="px-6 py-3.5 text-right">Action</th>
+            <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50/50 dark:bg-slate-850/50">
+              <th className="px-4 py-2.5">Account</th>
+              <th className="px-4 py-2.5">Renewal</th>
+              <th className="px-4 py-2.5">Commitments</th>
+              <th className="px-4 py-2.5">Sentiment</th>
+              <th className="px-4 py-2.5 text-right">CSM</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-            {filtered.length > 0 ? (
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                  Loading accounts...
+                </td>
+              </tr>
+            ) : filtered.length > 0 ? (
               filtered.map((acc) => (
-                <tr key={acc.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                  <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
-                    {acc.name}
+                <tr
+                  key={acc.id}
+                  onClick={() => navigate(`/accounts/${acc.id}`)}
+                  className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition cursor-pointer group"
+                >
+                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                    <div className="flex items-center gap-2">
+                      <span className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                        {acc.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 rounded">
+                        {acc.plan || acc.tier}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
-                    {acc.tier}
-                  </td>
-                  <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                    {acc.renewal_days} days
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded text-xs font-bold ${
-                      acc.risk_score > 70
-                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                        : acc.risk_score > 40
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                    }`}>
-                      {acc.risk_score} / 100
+
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                    <span className={acc.renewal_days <= 30 ? 'font-medium text-slate-900 dark:text-white' : ''}>
+                      {acc.renewal_days} days
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                    {acc.open_issues_count} open ({acc.unresolved_promises_count} promises)
+
+                  <td className="px-4 py-3">
+                    {acc.unresolved_promises_count > 0 ? (
+                      <span className="text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        {acc.unresolved_promises_count} unresolved
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">0 open</span>
+                    )}
                   </td>
-                  <td className="px-6 py-4 capitalize font-semibold text-slate-600 dark:text-slate-300">
-                    {acc.status}
+
+                  <td className="px-4 py-3 capitalize">
+                    <span className={`text-[11px] font-medium ${
+                      acc.recent_sentiment === 'negative' || acc.recent_sentiment === 'declining'
+                        ? 'text-rose-500'
+                        : acc.recent_sentiment === 'positive'
+                        ? 'text-emerald-500'
+                        : 'text-slate-500'
+                    }`}>
+                      {acc.recent_sentiment}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <NavLink
-                      to={`/accounts/${acc.id}`}
-                      className="inline-flex items-center gap-1 font-semibold text-brand-600 dark:text-brand-400 hover:underline"
-                    >
-                      View Memory <ArrowUpRight className="w-3.5 h-3.5" />
-                    </NavLink>
+
+                  <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span>{acc.csm_name}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition" />
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
-                  No accounts matching search query or filter.
+                <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                  No accounts found matching your filter.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   );
 };

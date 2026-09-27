@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { CustomerAccount } from '../types';
-import { Sidebar } from '../components/Sidebar';
-import { Users, Calendar, AlertTriangle, Database, ArrowUpRight, TrendingDown, ArrowRight, Search, Plus, Sparkles, RefreshCw } from 'lucide-react';
+import { CustomerAccount, AuditEvent } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { ArrowRight, Sparkles, Compass, Plus, Clock, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -12,187 +12,191 @@ interface Props {
 }
 
 export const Dashboard: React.FC<Props> = ({ onOpenAddModal, onOpenSearch }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
+  const [activities, setActivities] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDemoData, setShowDemoData] = useState(true);
 
   useEffect(() => {
-    if (showDemoData) {
-      api.getAccounts().then((data) => {
-        setAccounts(data);
-        setLoading(false);
-      }).catch(console.error);
-    } else {
-      setAccounts([]);
+    Promise.all([
+      api.getAccounts(),
+      api.getActivityEvents().catch(() => [])
+    ]).then(([accs, acts]) => {
+      setAccounts(accs);
+      setActivities(acts);
       setLoading(false);
-    }
-  }, [showDemoData]);
+    }).catch(console.error);
+  }, []);
 
-  const atRiskAccounts = accounts.filter(a => a.risk_level === 'high');
+  const attentionAccounts = accounts.filter(
+    a => a.risk_level === 'high' || a.unresolved_promises_count > 0 || a.renewal_days <= 30
+  ).slice(0, 4);
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Priya';
 
   return (
-    <div className="flex gap-6 pb-12">
-      {/* App Shell Sidebar */}
-      <Sidebar onOpenAddModal={onOpenAddModal} />
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="space-y-8 max-w-4xl"
+    >
+      {/* Calm Greeting Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Good morning, {firstName}
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Here is what needs your attention across your customer relationships today.
+        </p>
+      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 space-y-8 min-w-0">
-        {/* Workspace Top Header Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Workspace</span>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              Good morning, Priya
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Customer Success Portfolio • 42 accounts assigned
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            {/* Toggle Demo Data vs Empty State */}
-            <button
-              onClick={() => setShowDemoData(!showDemoData)}
-              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition border border-slate-200 dark:border-slate-700"
-            >
-              {showDemoData ? 'View Clean Empty State' : 'Load Portfolio Demo Data'}
-            </button>
-
-            <button
-              onClick={onOpenSearch}
-              className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs transition"
-              title="Search workspace (⌘K)"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onOpenAddModal}
-              className="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-subtle transition flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> + Add interaction
-            </button>
-          </div>
+      {/* Section 1: What Needs Attention? */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Needs Attention ({attentionAccounts.length})
+          </span>
+          <NavLink
+            to="/accounts"
+            className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium transition"
+          >
+            View all accounts →
+          </NavLink>
         </div>
 
-        {/* Dynamic Metric Cards */}
-        {showDemoData ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Active Accounts</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-black text-slate-900 dark:text-white">42</span>
-                <Users className="w-5 h-5 text-brand-500" />
-              </div>
-              <span className="text-[11px] text-slate-400">Assigned CSM: Priya Sharma</span>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Renewals This Month</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-black text-slate-900 dark:text-white">8</span>
-                <Calendar className="w-5 h-5 text-blue-500" />
-              </div>
-              <span className="text-[11px] text-amber-500 font-medium">3 requiring immediate attention</span>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Accounts At Risk</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-black text-rose-600 dark:text-rose-400">3</span>
-                <AlertTriangle className="w-5 h-5 text-rose-500" />
-              </div>
-              <span className="text-[11px] text-rose-500 font-medium">Acme Corp high attention</span>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-1">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Memories Stored</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-3xl font-black text-brand-600 dark:text-brand-400">1,284</span>
-                <Database className="w-5 h-5 text-brand-500" />
-              </div>
-              <span className="text-[11px] text-emerald-500 font-medium">+18 retained this week</span>
-            </div>
-          </div>
-        ) : (
-          /* Intentional Polished Empty State */
-          <div className="p-12 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-4 max-w-xl mx-auto">
-            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-              <Database className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Your customer memory starts here.</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Add your first interaction and RenewalOS will begin building persistent memory context around your accounts.
-              </p>
-            </div>
-            <button
-              onClick={onOpenAddModal}
-              className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-subtle transition inline-flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add first interaction
-            </button>
-          </div>
-        )}
-
-        {/* High Attention Accounts Grid */}
-        {showDemoData && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-500" /> High Attention Renewals
-              </h2>
-              <NavLink to="/accounts" className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline">
-                View All Accounts →
-              </NavLink>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {atRiskAccounts.map((acc) => (
-                <motion.div
-                  key={acc.id}
-                  whileHover={{ y: -2 }}
-                  className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 dark:text-white text-base">{acc.name}</span>
-                      <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                        Risk {acc.risk_score}/100
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-y border-slate-100 dark:border-slate-800 py-2">
-                      <span>Renewal in <strong className="text-slate-800 dark:text-slate-200">{acc.renewal_days} days</strong></span>
-                      <span className="text-rose-500 font-semibold flex items-center gap-0.5">
-                        <TrendingDown className="w-3.5 h-3.5" /> {acc.recent_sentiment}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Open Issues:</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{acc.open_issues_count}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Unresolved Promises:</span>
-                        <span className="font-semibold text-rose-500">{acc.unresolved_promises_count}</span>
-                      </div>
-                    </div>
+        <div className="space-y-2">
+          {attentionAccounts.length > 0 ? (
+            attentionAccounts.map((acc) => (
+              <div
+                key={acc.id}
+                onClick={() => navigate(`/accounts/${acc.id}`)}
+                className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group select-none shadow-xs"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                      {acc.name}
+                    </span>
+                    <span className="text-xs text-slate-400 font-normal">• {acc.plan || acc.tier}</span>
                   </div>
 
-                  <NavLink
-                    to={`/accounts/${acc.id}`}
-                    className="w-full mt-4 py-2.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-950/40 text-slate-800 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400 rounded-xl text-xs font-semibold text-center transition flex items-center justify-center gap-1"
-                  >
-                    Inspect Account Memory & Intelligence <ArrowUpRight className="w-3.5 h-3.5" />
-                  </NavLink>
-                </motion.div>
-              ))}
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {acc.unresolved_promises_count > 0 ? (
+                      <span className="text-rose-600 dark:text-rose-400 font-medium">
+                        {acc.unresolved_promises_count} unresolved commitment{acc.unresolved_promises_count > 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span>Renewal approaching in {acc.renewal_days} days</span>
+                    )}
+                    <span className="text-slate-400"> • Assigned to {acc.csm_name}</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
+                    acc.risk_level === 'high'
+                      ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
+                  }`}>
+                    {acc.renewal_days}d until renewal
+                  </span>
+                  <button className="text-xs text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white font-medium flex items-center gap-1 transition">
+                    <span>Review</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-400">
+              No accounts currently flagged for urgent attention.
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+        </div>
+      </section>
+
+      {/* Section 2: Recent Memory Activity Stream */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Recent Memory Activity
+          </span>
+          <NavLink
+            to="/memory"
+            className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium transition"
+          >
+            Memory Bank →
+          </NavLink>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800/60 overflow-hidden shadow-xs">
+          {activities.slice(0, 5).map((act) => (
+            <div key={act.id} className="p-3.5 flex items-start justify-between gap-3 text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+              <div className="space-y-0.5">
+                <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                  {act.title}
+                </span>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed">
+                  {act.description}
+                </p>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono shrink-0 whitespace-nowrap">
+                {act.created_at}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Section 3: Continue Working Actions */}
+      <section className="space-y-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+          Quick Actions
+        </span>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            onClick={() => navigate('/accounts/acme-corp')}
+            className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-left transition flex items-center justify-between group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white block group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                Prepare a Renewal
+              </span>
+              <span className="text-[11px] text-slate-500">Acme Corp brief</span>
+            </div>
+            <Sparkles className="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition-colors" />
+          </button>
+
+          <button
+            onClick={() => navigate('/copilot')}
+            className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-left transition flex items-center justify-between group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white block group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                Ask Copilot
+              </span>
+              <span className="text-[11px] text-slate-500">Query memory bank</span>
+            </div>
+            <Compass className="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition-colors" />
+          </button>
+
+          <button
+            onClick={onOpenAddModal}
+            className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-xl text-left transition flex items-center justify-between group shadow-xs"
+          >
+            <div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white block group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                Add Interaction
+              </span>
+              <span className="text-[11px] text-slate-500">Log note or touchpoint</span>
+            </div>
+            <Plus className="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition-colors" />
+          </button>
+        </div>
+      </section>
+    </motion.div>
   );
 };

@@ -3,12 +3,12 @@ import { useParams, NavLink } from 'react-router-dom';
 import { api } from '../services/api';
 import { CustomerAccount, InteractionMemory, BriefingResponse, TemporalStep, KnowledgeGraphData, RenewalBrief, MeetingPrep } from '../types';
 import { MemoryTimeline } from '../components/MemoryTimeline';
-import { MemoryGrowthWidget } from '../components/MemoryGrowthWidget';
 import { MemoryEvolutionWidget } from '../components/MemoryEvolutionWidget';
 import { CustomerKnowledgeGraph } from '../components/CustomerKnowledgeGraph';
 import { TemporalEvolutionTimeline } from '../components/TemporalEvolutionTimeline';
 import { CopilotResponseCard } from '../components/CopilotResponseCard';
-import { Bot, Plus, ArrowLeft, Sparkles, Network, Clock, Database, Layers, UserCheck, ShieldAlert, CheckCircle2, FileText, Users, Calendar, AlertTriangle, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Sparkles, Compass, Plus, Calendar, FileText, ShieldAlert, CheckCircle2, AlertTriangle, Lightbulb, ChevronRight, Layers, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../components/Toast';
 
 interface Props {
@@ -27,9 +27,9 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
   const [evolutionData, setEvolutionData] = useState<any>(null);
   const [briefing, setBriefing] = useState<BriefingResponse | null>(null);
   const [loadingBriefing, setLoadingBriefing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'evolution' | 'graph' | 'temporal' | 'commitments' | 'timeline'>('evolution');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'evolution' | 'temporal' | 'graph'>('timeline');
 
-  // New Pass 3 Modals
+  // Briefing Modals
   const [renewalBrief, setRenewalBrief] = useState<RenewalBrief | null>(null);
   const [loadingBrief, setLoadingBrief] = useState(false);
   const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
@@ -38,6 +38,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
   const [loadingPrep, setLoadingPrep] = useState(false);
   const [isPrepModalOpen, setIsPrepModalOpen] = useState(false);
 
+  // Meeting Notes Form Modal
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const [noteTitle, setNoteTitle] = useState('');
   const [noteDate, setNoteDate] = useState(new Date().toISOString().split('T')[0]);
@@ -57,7 +58,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
     loadData();
   }, [accountId]);
 
-  const handleGenerateBriefing = async (mode: 'recall' | 'reflect' = 'reflect') => {
+  const handleGenerateCopilot = async (mode: 'recall' | 'reflect' = 'reflect') => {
     setLoadingBriefing(true);
     try {
       const res = await api.queryCopilot(`Prepare me for ${account?.name || accountId}'s renewal`, accountId, mode, true);
@@ -65,7 +66,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
       showToast(`Hindsight ${mode.toUpperCase()} Complete`, `Grounded across ${res.supporting_memories?.length || 0} memories`);
     } catch (err) {
       console.error(err);
-      showToast('Briefing Failed', 'Could not synthesize copilot analysis', 'error');
+      showToast('Error', 'Could not generate copilot response', 'error');
     } finally {
       setLoadingBriefing(false);
     }
@@ -79,7 +80,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
       setRenewalBrief(data);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load brief', 'Could not synthesize renewal brief', 'error');
+      showToast('Error', 'Could not generate renewal brief', 'error');
     } finally {
       setLoadingBrief(false);
     }
@@ -93,7 +94,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
       setMeetingPrep(data);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load meeting prep', 'Could not synthesize meeting prep', 'error');
+      showToast('Error', 'Could not generate meeting prep', 'error');
     } finally {
       setLoadingPrep(false);
     }
@@ -110,7 +111,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
         participants: noteParticipants,
         notes: noteContent
       });
-      showToast('Meeting Remembered.', 'Saved to DB and indexed into persistent Hindsight memory bank.');
+      showToast('Meeting Remembered.', 'Saved to database and retained into Hindsight memory bank.');
       setNoteTitle('');
       setNoteContent('');
       setIsNotesModalOpen(false);
@@ -124,22 +125,32 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
   };
 
   if (!account) {
-    return <div className="p-8 text-center text-slate-500">Loading customer account memory bank...</div>;
+    return <div className="p-8 text-center text-slate-400 text-xs">Loading customer memory...</div>;
   }
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Back button */}
-      <NavLink to="/accounts" className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
-        <ArrowLeft className="w-4 h-4" /> Back to Accounts
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18 }}
+      className="space-y-6 max-w-5xl pb-12"
+    >
+      {/* Back Link */}
+      <NavLink
+        to="/accounts"
+        className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium transition"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" /> Back to Accounts
       </NavLink>
 
-      {/* Account Header Banner */}
-      <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-panel flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {/* Account Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{account.name}</h1>
-            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {account.name}
+            </h1>
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
               {account.plan || account.tier}
             </span>
           </div>
@@ -148,93 +159,139 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
           </p>
         </div>
 
-        {/* Action Buttons: Prepare Renewal & Meeting Prep */}
+        {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleOpenRenewalBrief}
-            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5" /> Prepare Renewal
           </button>
 
           <button
             onClick={handleOpenMeetingPrep}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
           >
             <Calendar className="w-3.5 h-3.5" /> Prepare for Meeting
           </button>
 
           <button
             onClick={() => setIsNotesModalOpen(true)}
-            className="px-3.5 py-2 bg-slate-900 dark:bg-slate-100 hover:opacity-90 text-white dark:text-slate-900 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
           >
             <FileText className="w-3.5 h-3.5" /> Add Meeting Notes
           </button>
         </div>
       </div>
 
-      {/* Memory Growth Bar */}
-      <MemoryGrowthWidget count={memories.length} />
+      {/* Customer Evolution & Commitments Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Current Status</span>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-900 dark:text-white capitalize">{account.status}</span>
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
+              account.risk_level === 'high' ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+            }`}>
+              Risk {account.risk_score}/100
+            </span>
+          </div>
+        </div>
 
-      {/* Tab Navigation for Hindsight Concepts */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto text-xs font-semibold">
-        <button
-          onClick={() => setActiveTab('evolution')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${
-            activeTab === 'evolution'
-              ? 'bg-brand-600 text-white shadow-subtle'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Sparkles className="w-4 h-4" /> Memory Evolution
-        </button>
+        <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Open Commitments</span>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
+              {account.unresolved_promises_count > 0 ? `${account.unresolved_promises_count} Overdue` : '0 Pending'}
+            </span>
+            <span className="text-xs text-slate-400 font-medium">{account.commitments?.length || 0} total</span>
+          </div>
+        </div>
 
-        <button
-          onClick={() => setActiveTab('graph')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${
-            activeTab === 'graph'
-              ? 'bg-purple-600 text-white shadow-subtle'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Network className="w-4 h-4" /> Knowledge Graph
-        </button>
-
-        <button
-          onClick={() => setActiveTab('temporal')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${
-            activeTab === 'temporal'
-              ? 'bg-amber-600 text-white shadow-subtle'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Clock className="w-4 h-4" /> 60-Day Evolution
-        </button>
-
-        <button
-          onClick={() => setActiveTab('commitments')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${
-            activeTab === 'commitments'
-              ? 'bg-emerald-600 text-white shadow-subtle'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4" /> Commitments ({account.commitments?.length || 0})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('timeline')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg transition ${
-            activeTab === 'timeline'
-              ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-subtle'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Layers className="w-4 h-4" /> Raw Memory Timeline
-        </button>
+        <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Retained Memories</span>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-900 dark:text-white">{memories.length} Ingested</span>
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Memory Active</span>
+          </div>
+        </div>
       </div>
 
-      {/* Tab Content Display */}
+      {/* Navigation Tabs for View Modes */}
+      <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2 text-xs font-medium">
+        {[
+          { id: 'timeline', label: `Timeline (${memories.length})` },
+          { id: 'evolution', label: 'Observation Explorer' },
+          { id: 'temporal', label: '60-Day Evolution' },
+          { id: 'graph', label: 'Entity Graph' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-3 py-1.5 rounded-lg text-xs transition ${
+              activeTab === tab.id
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Viewport */}
+      {activeTab === 'timeline' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Customer Memory Timeline
+              </span>
+              <button
+                onClick={onOpenAddModal}
+                className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-semibold flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add memory
+              </button>
+            </div>
+            <MemoryTimeline memories={memories} />
+          </div>
+
+          <div className="lg:col-span-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Copilot Analysis
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => handleGenerateCopilot('recall')}
+                  disabled={loadingBriefing}
+                  className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded text-[11px] font-semibold transition"
+                >
+                  Recall
+                </button>
+                <button
+                  onClick={() => handleGenerateCopilot('reflect')}
+                  disabled={loadingBriefing}
+                  className="px-2 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded text-[11px] font-semibold transition"
+                >
+                  Reflect
+                </button>
+              </div>
+            </div>
+
+            {briefing ? (
+              <CopilotResponseCard briefing={briefing} />
+            ) : (
+              <div className="p-8 text-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-2 text-xs text-slate-400">
+                <Compass className="w-6 h-6 text-slate-400 mx-auto" />
+                <p>Click Recall or Reflect to synthesize intelligence over {memories.length} customer memories.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'evolution' && (
         <MemoryEvolutionWidget
           observations={evolutionData?.observations || []}
@@ -244,164 +301,69 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
         />
       )}
 
-      {activeTab === 'graph' && (
-        <CustomerKnowledgeGraph graphData={graphData} />
-      )}
-
       {activeTab === 'temporal' && (
         <TemporalEvolutionTimeline steps={temporalSteps} />
       )}
 
-      {activeTab === 'commitments' && (
-        <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-emerald-500" /> Account Commitments & Action Items
-          </h3>
-          <div className="space-y-3">
-            {account.commitments && account.commitments.length > 0 ? (
-              account.commitments.map((comm) => (
-                <div key={comm.id} className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start justify-between text-xs gap-3">
-                  <div className="space-y-1">
-                    <span className="font-bold text-slate-900 dark:text-white block">{comm.description}</span>
-                    <span className="text-slate-500 dark:text-slate-400">Owner: {comm.owner_name} • Due: {comm.due_date}</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
-                    comm.status === 'overdue' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-                  }`}>
-                    {comm.status}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-400 italic">No open commitments recorded for this account.</p>
-            )}
-          </div>
-        </div>
+      {activeTab === 'graph' && (
+        <CustomerKnowledgeGraph graphData={graphData} />
       )}
 
-      {/* Two Column Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Memory Timeline */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              Retained Memories ({memories.length})
-            </h2>
-            <button
-              onClick={onOpenAddModal}
-              className="text-xs font-semibold px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl transition flex items-center gap-1 shadow-subtle"
-            >
-              <Plus className="w-3.5 h-3.5" /> Retain New Memory
-            </button>
-          </div>
-
-          <MemoryTimeline memories={memories} />
-        </div>
-
-        {/* Right: AI Copilot Renewal Intelligence */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Bot className="w-5 h-5 text-brand-500" /> Hindsight Copilot
-            </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleGenerateBriefing('recall')}
-                disabled={loadingBriefing}
-                className="text-xs font-semibold px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition disabled:opacity-50"
-              >
-                RECALL
-              </button>
-              <button
-                onClick={() => handleGenerateBriefing('reflect')}
-                disabled={loadingBriefing}
-                className="text-xs font-semibold px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition disabled:opacity-50"
-              >
-                REFLECT
-              </button>
-            </div>
-          </div>
-
-          {briefing ? (
-            <CopilotResponseCard briefing={briefing} />
-          ) : (
-            <div className="p-8 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-3">
-              <Bot className="w-10 h-10 text-brand-500 mx-auto" />
-              <h4 className="text-sm font-bold text-slate-900 dark:text-white">Trigger Hindsight Recall or Reflect</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Click RECALL for factual lookup or REFLECT for deep reasoning over {memories.length} memories.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Renewal Brief Modal */}
+      {/* Renewal Brief Modal Drawer */}
       {isBriefModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
-            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-5 shadow-xl text-xs">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                  <Sparkles className="w-3.5 h-3.5" /> Renewal Brief
-                </div>
-                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
-                  Renewal Preparation Brief: {account.name}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Grounded Intelligence</span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Renewal Brief: {account.name}
                 </h3>
               </div>
               <button
                 onClick={() => setIsBriefModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
               >
                 ✕
               </button>
             </div>
 
             {loadingBrief ? (
-              <div className="p-12 text-center text-xs text-slate-400">Synthesizing renewal briefing from memory bank...</div>
+              <div className="p-12 text-center text-slate-400">Synthesizing renewal brief...</div>
             ) : renewalBrief ? (
-              <div className="space-y-4 text-xs">
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
-                  <span className="font-bold text-slate-900 dark:text-white block">Current Context</span>
+              <div className="space-y-4">
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">Current Context</span>
                   <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{renewalBrief.current_context}</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 bg-rose-50/50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-900/30 space-y-2">
-                    <span className="font-bold text-rose-600 dark:text-rose-400 block flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" /> Key Risks
-                    </span>
-                    <ul className="space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1.5">
+                    <span className="font-bold text-rose-600 dark:text-rose-400 block">Key Risks</span>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-300">
                       {renewalBrief.key_risks.map((r, i) => (
-                        <li key={i} className="text-slate-700 dark:text-slate-300 flex items-start gap-1">
-                          <span>•</span> {r}
-                        </li>
+                        <li key={i}>• {r}</li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/30 space-y-2">
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 block flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Customer Priorities
-                    </span>
-                    <ul className="space-y-1">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1.5">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 block">Customer Priorities</span>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-300">
                       {renewalBrief.customer_priorities.map((p, i) => (
-                        <li key={i} className="text-slate-700 dark:text-slate-300 flex items-start gap-1">
-                          <span>•</span> {p}
-                        </li>
+                        <li key={i}>• {p}</li>
                       ))}
                     </ul>
                   </div>
                 </div>
 
-                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-900/30 space-y-2">
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400 block flex items-center gap-1.5">
-                    <Lightbulb className="w-3.5 h-3.5" /> Recommended Discussion Points
-                  </span>
-                  <ul className="space-y-1.5">
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1.5">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">Recommended Discussion Points</span>
+                  <ul className="space-y-1 text-slate-700 dark:text-slate-300">
                     {renewalBrief.recommended_discussion_points.map((pt, i) => (
-                      <li key={i} className="text-slate-800 dark:text-slate-200 flex items-start gap-2">
-                        <span className="font-bold text-indigo-500">{i + 1}.</span> {pt}
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="font-bold text-brand-600 dark:text-brand-400">{i + 1}.</span>
+                        <span>{pt}</span>
                       </li>
                     ))}
                   </ul>
@@ -412,75 +374,67 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setIsBriefModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs"
+                className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold rounded-lg text-xs"
               >
-                Close Brief
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Meeting Prep Modal */}
+      {/* Meeting Prep Modal Drawer */}
       {isPrepModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
-            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-5 shadow-xl text-xs">
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                  <Calendar className="w-3.5 h-3.5" /> Meeting Prep
-                </div>
-                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Meeting Preparation</span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   Meeting Briefing: {account.name}
                 </h3>
               </div>
               <button
                 onClick={() => setIsPrepModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
               >
                 ✕
               </button>
             </div>
 
             {loadingPrep ? (
-              <div className="p-12 text-center text-xs text-slate-400">Synthesizing meeting agenda and context...</div>
+              <div className="p-12 text-center text-slate-400">Synthesizing meeting strategy...</div>
             ) : meetingPrep ? (
-              <div className="space-y-4 text-xs">
-                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-900/30 space-y-1">
-                  <span className="font-bold text-indigo-700 dark:text-indigo-300 block">Recommended Meeting Strategy</span>
+              <div className="space-y-4">
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1">
+                  <span className="font-bold text-brand-600 dark:text-brand-400 block">Recommended Meeting Strategy</span>
                   <p className="text-slate-700 dark:text-slate-200 leading-relaxed">{meetingPrep.recommended_meeting_strategy}</p>
                 </div>
 
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                  <span className="font-bold text-slate-900 dark:text-white block">What happened since last meeting?</span>
-                  <ul className="space-y-1">
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl space-y-1">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">What happened since last meeting?</span>
+                  <ul className="space-y-1 text-slate-600 dark:text-slate-300">
                     {meetingPrep.what_happened_since_last_meeting.map((item, i) => (
-                      <li key={i} className="text-slate-600 dark:text-slate-300 flex items-start gap-1.5">
-                        <span>•</span> {item}
-                      </li>
+                      <li key={i}>• {item}</li>
                     ))}
                   </ul>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="font-bold text-slate-900 dark:text-white block">What to ask?</span>
-                    <ul className="space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">What to ask?</span>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-300">
                       {meetingPrep.what_to_ask.map((item, i) => (
-                        <li key={i} className="text-slate-600 dark:text-slate-300 flex items-start gap-1.5">
-                          <span className="text-indigo-500 font-bold">?</span> {item}
-                        </li>
+                        <li key={i}>? {item}</li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                    <span className="font-bold text-slate-900 dark:text-white block">What to follow up on?</span>
-                    <ul className="space-y-1">
+                  <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">What to follow up on?</span>
+                    <ul className="space-y-1 text-slate-600 dark:text-slate-300">
                       {meetingPrep.what_to_follow_up_on.map((item, i) => (
-                        <li key={i} className="text-slate-600 dark:text-slate-300 flex items-start gap-1.5">
-                          <span className="text-emerald-500 font-bold">✓</span> {item}
-                        </li>
+                        <li key={i}>✓ {item}</li>
                       ))}
                     </ul>
                   </div>
@@ -491,9 +445,9 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setIsPrepModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs"
+                className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold rounded-lg text-xs"
               >
-                Close Meeting Prep
+                Close
               </button>
             </div>
           </div>
@@ -502,20 +456,20 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
 
       {/* Add Meeting Notes Modal */}
       {isNotesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   Add Meeting Notes for {account.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Notes are stored to database and retained into Hindsight Memory Bank.
+                <p className="text-xs text-slate-400">
+                  Notes are saved to the database and retained into the persistent memory bank.
                 </p>
               </div>
               <button
                 onClick={() => setIsNotesModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
               >
                 ✕
               </button>
@@ -523,22 +477,22 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
 
             <form onSubmit={handleSaveMeetingNotes} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Meeting Title
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Q3 Technical Sync on SAML SSO"
+                  placeholder="e.g. Q3 Executive Sync on SAML SSO"
                   value={noteTitle}
                   onChange={(e) => setNoteTitle(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Date
                   </label>
                   <input
@@ -549,7 +503,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Participants
                   </label>
                   <input
@@ -563,8 +517,8 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Notes & Action Items
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Notes & Discussion
                 </label>
                 <textarea
                   required
@@ -572,7 +526,7 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
                   placeholder="What was discussed? What commitments or requests were made?"
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-400"
                 />
               </div>
 
@@ -580,14 +534,14 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
                 <button
                   type="button"
                   onClick={() => setIsNotesModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs"
+                  className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingNote}
-                  className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-sm transition disabled:opacity-50"
+                  className="px-4 py-1.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold rounded-lg text-xs transition disabled:opacity-50"
                 >
                   {savingNote ? 'Remembering...' : 'Remember Meeting'}
                 </button>
@@ -596,6 +550,6 @@ export const AccountDetail: React.FC<Props> = ({ onOpenAddModal }) => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
