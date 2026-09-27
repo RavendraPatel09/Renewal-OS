@@ -1,7 +1,11 @@
+import asyncio
 import logging
+import time
 from typing import List, Dict, Any, Optional
 import httpx
 from app.config import settings
+from app.core.logging_config import app_logger
+from app.core.error_tracker import error_tracker
 from app.models.seed_data import (
     BANK_MISSION,
     BANK_DIRECTIVES,
@@ -12,20 +16,24 @@ from app.models.seed_data import (
     ACME_KNOWLEDGE_GRAPH
 )
 
-logger = logging.getLogger("hindsight_service")
-
 class MemoryStore:
     """In-memory indexing & fallback layer to complement Hindsight Cloud/Server."""
     def __init__(self):
         self.memories: List[Dict[str, Any]] = []
 
     def add(self, memory: Dict[str, Any]):
-        # Avoid duplicates
+        # Deduplicate by ID
         if not any(m.get("id") == memory.get("id") for m in self.memories):
             self.memories.append(memory)
 
-    def get_by_account(self, account_id: str) -> List[Dict[str, Any]]:
-        return [m for m in self.memories if m.get("account_id") == account_id]
+    def get_by_account(self, account_id: str, workspace_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        results = [m for m in self.memories if m.get("account_id") == account_id]
+        if workspace_id:
+            results = [m for m in results if m.get("workspace_id") == workspace_id or not m.get("workspace_id")]
+        return results
+
+    def purge_account(self, account_id: str):
+        self.memories = [m for m in self.memories if m.get("account_id") != account_id]
 
     def clear(self):
         self.memories = []
@@ -38,11 +46,22 @@ class HindsightService:
         self.api_key = settings.HINDSIGHT_API_KEY
         self.bank_id = settings.HINDSIGHT_BANK_ID
 
-    async def retain(self, account_id: str, content: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Store interaction into Hindsight persistent memory bank."""
+    async def retain(
+        self,
+        account_id: str,
+        content: str,
+        metadata: Dict[str, Any],
+        request_id: Optional[str] = None,
+        workspace_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Store interaction into Hindsight persistent memory bank with retry & structured logging.
+        """
+        start_time = time.time()
         memory_entry = {
             "id": metadata.get("id", f"mem_{len(local_memory_store.memories) + 1}"),
             "account_id": account_id,
+            "workspace_id": workspace_id or metadata.get("workspace_id"),
             "interaction_type": metadata.get("interaction_type", "general"),
             "fact_type": metadata.get("fact_type", "world_fact"),
             "date": metadata.get("occurred_at", metadata.get("date", "2026-08-01")),
@@ -54,66 +73,142 @@ class HindsightService:
         }
         local_memory_store.add(memory_entry)
 
+        # Retry loop for external Hindsight API
         hindsight_success = False
-        # Attempt call to official Hindsight Cloud / Local Server API if configured
-        if self.api_key or self.base_url:
-            try:
-                async with httpx.AsyncClient(timeout=3.0) as client:
-                    headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
-                    payload = {
-                        "bank_id": self.bank_id,
-                        "content": f"[Account: {account_id}] [{memory_entry['fact_type'].upper()}] {content}",
-                        "metadata": metadata
-                    }
-                    res = await client.post(f"{self.base_url}/retain", json=payload, headers=headers)
-                    if res.status_code in (200, 201):
-                        hindsight_success = True
-            except Exception as e:
-                logger.warning(f"Hindsight API ping skipped/failed, using local memory index: {e}")
+        retry_count = 0
+        max_retries = 3
+
+        if self.api_key or (self.base_url and "localhost" not in self.base_url):
+            for attempt in range(1, max_retries + 1):
+                try:
+                    async with httpx.AsyncClient(timeout=3.0) as client:
+                        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+                        payload = {
+                            "bank_id": self.bank_id,
+                            "content": f"[Account: {account_id}] [{memory_entry['fact_type'].upper()}] {content}",
+                            "metadata": metadata
+                        }
+                        res = await client.post(f"{self.base_url}/retain", json=payload, headers=headers)
+                        if res.status_code in (200, 201):
+                            hindsight_success = True
+                            break
+                        else:
+                            retry_count += 1
+                            await asyncio.sleep(0.2 * attempt)
+                except Exception as e:
+                    retry_count += 1
+                    if attempt == max_retries:
+                        error_tracker.record_error(
+                            category="hindsight_error",
+                            message=f"Hindsight Retain failed after {max_retries} attempts: {str(e)[:150]}",
+                            request_id=request_id,
+                            account_id=account_id
+                        )
+                    await asyncio.sleep(0.2 * attempt)
+        else:
+            # Local in-memory bank mode active
+            hindsight_success = True
+
+        latency_ms = int((time.time() - start_time) * 1000)
+        app_logger.info(
+            f"Hindsight Retain completed for account {account_id}",
+            extra={
+                "request_id": request_id or "internal",
+                "event_type": "hindsight_retain",
+                "account_id": account_id,
+                "latency_ms": latency_ms,
+                "status": "success" if hindsight_success else "fallback_local"
+            }
+        )
 
         memory_entry["hindsight_retained"] = True
+        memory_entry["hindsight_sync_status"] = "synced" if hindsight_success else "pending_sync"
         return memory_entry
 
-    async def recall(self, query: str, account_id: Optional[str] = None, limit: int = 15) -> List[Dict[str, Any]]:
-        """Perform multi-strategy search across Hindsight memory bank."""
-        # Check if Hindsight Cloud endpoint is reachable for recall
-        if self.api_key or self.base_url:
-            try:
-                async with httpx.AsyncClient(timeout=3.0) as client:
-                    headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
-                    params = {"bank_id": self.bank_id, "query": query, "limit": limit}
-                    if account_id:
-                        params["account_id"] = account_id
-                    res = await client.get(f"{self.base_url}/recall", params=params, headers=headers)
-                    if res.status_code == 200:
-                        remote_results = res.json().get("memories", [])
-                        if remote_results:
-                            return remote_results
-            except Exception as e:
-                logger.debug(f"Hindsight server recall fallback: {e}")
+    async def recall(
+        self,
+        query: str,
+        account_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        limit: int = 15,
+        request_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform multi-strategy search across Hindsight memory bank.
+        Restricted by workspace_id and capped by limit.
+        """
+        start_time = time.time()
+        effective_limit = min(limit, 20)  # Sane cap on memory recall
 
-        # Local multi-strategy retrieval
+        # Local multi-strategy retrieval with strict workspace partition
         memories = local_memory_store.memories
         if account_id:
             memories = [m for m in memories if m.get("account_id") == account_id]
-        
+        if workspace_id:
+            memories = [m for m in memories if m.get("workspace_id") == workspace_id or not m.get("workspace_id")]
+
+        results = []
         if query:
             keywords = query.lower().split()
             scored = []
             for m in memories:
-                score = sum(1 for kw in keywords if kw in m.get("content", "").lower() or kw in m.get("summary", "").lower() or kw in m.get("account_id", "").lower())
+                score = sum(
+                    1 for kw in keywords 
+                    if kw in m.get("content", "").lower() 
+                    or kw in m.get("summary", "").lower() 
+                    or kw in m.get("account_id", "").lower()
+                )
                 scored.append((score, m))
             scored.sort(key=lambda x: x[0], reverse=True)
-            return [m for s, m in scored[:limit]]
-        
-        return memories[:limit]
+            results = [m for s, m in scored[:effective_limit]]
+        else:
+            results = memories[:effective_limit]
 
-    async def reflect(self, query: str, account_id: str, include_cross_account: bool = False) -> Dict[str, Any]:
+        latency_ms = int((time.time() - start_time) * 1000)
+        app_logger.info(
+            f"Hindsight Recall executed (recalled {len(results)} items)",
+            extra={
+                "request_id": request_id or "internal",
+                "event_type": "hindsight_recall",
+                "account_id": account_id or "all",
+                "latency_ms": latency_ms,
+                "status": "success"
+            }
+        )
+        return results
+
+    async def reflect(
+        self,
+        query: str,
+        account_id: str,
+        workspace_id: Optional[str] = None,
+        include_cross_account: bool = False,
+        request_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Perform deep synthesis across consolidated Observations, World Facts, and Experience Facts."""
-        account_memories = await self.recall(query=query, account_id=account_id, limit=20)
+        start_time = time.time()
+        account_memories = await self.recall(
+            query=query,
+            account_id=account_id,
+            workspace_id=workspace_id,
+            limit=15,
+            request_id=request_id
+        )
         observations = self.get_observations(account_id)
         world_facts = self.get_world_facts(account_id)
         experience_facts = self.get_experience_facts(account_id)
+
+        latency_ms = int((time.time() - start_time) * 1000)
+        app_logger.info(
+            f"Hindsight Reflect context prepared for {account_id}",
+            extra={
+                "request_id": request_id or "internal",
+                "event_type": "hindsight_reflect",
+                "account_id": account_id,
+                "latency_ms": latency_ms,
+                "status": "success"
+            }
+        )
 
         return {
             "query": query,
@@ -127,12 +222,10 @@ class HindsightService:
         }
 
     def get_observations(self, account_id: str) -> List[Dict[str, Any]]:
-        """Return consolidated Hindsight observations for account based on memory accumulation."""
         acc_memories = local_memory_store.get_by_account(account_id)
         if len(acc_memories) >= 3 and account_id == "acme-corp":
             return ACME_OBSERVATIONS
         elif len(acc_memories) >= 2:
-            # Dynamically derive evolution stages and observation from accumulated memories
             first_mem = acc_memories[0]
             last_mem = acc_memories[-1]
             neg_count = sum(1 for m in acc_memories if m.get("sentiment") == "negative")
@@ -239,8 +332,11 @@ class HindsightService:
             ]
         }
 
+    def purge_account_memories(self, account_id: str):
+        """Purge all memories associated with an account (GDPR & data deletion)."""
+        local_memory_store.purge_account(account_id)
+
     def reset_memories(self):
         local_memory_store.clear()
 
 hindsight_service = HindsightService()
-

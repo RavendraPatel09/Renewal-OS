@@ -1,7 +1,9 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="allow")
+
     APP_NAME: str = "RenewalOS API"
     APP_URL: str = os.getenv("APP_URL", "http://localhost:5173")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./renewalos.db")
@@ -15,9 +17,5 @@ class Settings(BaseSettings):
     HINDSIGHT_BANK_ID: str = os.getenv("HINDSIGHT_BANK_ID", "renewal_os_bank")
     
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-
-    class Config:
-        env_file = ".env"
-        extra = "allow"
 
 settings = Settings()

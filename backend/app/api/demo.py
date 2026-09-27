@@ -10,14 +10,18 @@ from app.models.seed_data import (
     HISTORICAL_CHURN_MEMORIES,
     HISTORICAL_RENEWED_MEMORIES
 )
-
 from app.api.activity import record_audit_event
+from app.core.rate_limiter import rate_limit_dependency
 
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
-@router.post("/reset")
+@router.post(
+    "/reset",
+    dependencies=[Depends(rate_limit_dependency(max_requests=20, window_seconds=60, key_prefix="demo_reset"))]
+)
 async def reset_demo(db: Session = Depends(get_db)):
     hindsight_service.reset_memories()
+    init_db(db)
     record_audit_event(
         db=db,
         event_type="demo_reset",
@@ -27,7 +31,10 @@ async def reset_demo(db: Session = Depends(get_db)):
     )
     return {"status": "success", "message": "Demo state reset safely. Hindsight memory bank cleared."}
 
-@router.post("/seed")
+@router.post(
+    "/seed",
+    dependencies=[Depends(rate_limit_dependency(max_requests=20, window_seconds=60, key_prefix="demo_seed"))]
+)
 async def seed_demo(db: Session = Depends(get_db)):
     hindsight_service.reset_memories()
     init_db(db)
@@ -67,7 +74,10 @@ async def seed_demo(db: Session = Depends(get_db)):
         "unresolved_signals": 23
     }
 
-@router.post("/inject-acme-stage2")
+@router.post(
+    "/inject-acme-stage2",
+    dependencies=[Depends(rate_limit_dependency(max_requests=30, window_seconds=60, key_prefix="demo_inject"))]
+)
 async def inject_acme_stage2():
     for mem in ACME_DEMO_MEMORIES[:5]:
         await hindsight_service.retain(
@@ -77,7 +87,10 @@ async def inject_acme_stage2():
         )
     return {"status": "success", "message": "5 Acme memories retained into Hindsight for Stage 2"}
 
-@router.post("/inject-cross-account-stage3")
+@router.post(
+    "/inject-cross-account-stage3",
+    dependencies=[Depends(rate_limit_dependency(max_requests=30, window_seconds=60, key_prefix="demo_inject"))]
+)
 async def inject_cross_account_stage3():
     for mem in HISTORICAL_CHURN_MEMORIES + HISTORICAL_RENEWED_MEMORIES:
         await hindsight_service.retain(

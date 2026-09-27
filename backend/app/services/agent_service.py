@@ -1,21 +1,22 @@
 import json
 import logging
+import time
 from typing import List, Dict, Any, Optional
 from groq import Groq
 from app.config import settings
+from app.core.logging_config import app_logger
+from app.core.error_tracker import error_tracker
 from app.services.hindsight_service import hindsight_service
 from app.models.seed_data import BANK_MISSION, BANK_DIRECTIVES
-
-logger = logging.getLogger("agent_service")
 
 class AgentService:
     def __init__(self):
         self.client = None
         if settings.GROQ_API_KEY:
             try:
-                self.client = Groq(api_key=settings.GROQ_API_KEY)
+                self.client = Groq(api_key=settings.GROQ_API_KEY, timeout=8.0)
             except Exception as e:
-                logger.warning(f"Failed to initialize Groq client: {e}")
+                app_logger.warning(f"Failed to initialize Groq client: {e}")
 
     async def generate_renewal_briefing(
         self,
@@ -23,15 +24,22 @@ class AgentService:
         query: str,
         mode: str = "reflect",
         include_cross_account: bool = False,
-        demo_stage: Optional[int] = None
+        demo_stage: Optional[int] = None,
+        request_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Core AI reasoning logic grounding responses in retrieved Hindsight memories, Observations, and Facts."""
+        start_time = time.time()
 
         # Handle demo stage cold-start edge case explicitly if specified
-        account_memories = await hindsight_service.recall(query=query, account_id=account_id, limit=20)
+        account_memories = await hindsight_service.recall(
+            query=query,
+            account_id=account_id,
+            limit=15,
+            request_id=request_id
+        )
         
         if demo_stage == 1 or (len(account_memories) == 0 and not include_cross_account):
-            return {
+            res = {
                 "query_mode": mode,
                 "summary": f"Cold Start: Limited context available for {account_id}. No interaction history or recent meeting notes stored in Hindsight yet.",
                 "risk_score": 50,
@@ -46,12 +54,16 @@ class AgentService:
                 "recommended_action": "Log recent sales notes, customer emails, or support tickets to activate Hindsight Observations & Reflect reasoning.",
                 "supporting_memories": [],
                 "bank_mission": BANK_MISSION,
-                "bank_directives": BANK_DIRECTIVES
+                "bank_directives": BANK_DIRECTIVES,
+                "memory_trace": [
+                    {"step": "1. Cold Start Check", "description": "Detected 0 retained memories for account in bank.", "status": "completed"}
+                ]
             }
+            return res
 
         cross_account_memories = []
         if include_cross_account or demo_stage == 3:
-            all_memories = await hindsight_service.recall(query="churn pricing support ticket promise", limit=25)
+            all_memories = await hindsight_service.recall(query="churn pricing support ticket promise", limit=15, request_id=request_id)
             cross_account_memories = [m for m in all_memories if m.get("account_id") != account_id]
 
         observations = hindsight_service.get_observations(account_id)
@@ -102,6 +114,7 @@ Do not include markdown formatting. Return raw JSON.
         ]
 
         if self.client:
+            llm_start = time.time()
             try:
                 completion = self.client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
@@ -110,6 +123,7 @@ Do not include markdown formatting. Return raw JSON.
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.2,
+                    max_tokens=1200,  # Token budget cap
                     response_format={"type": "json_object"}
                 )
                 res_text = completion.choices[0].message.content
@@ -125,13 +139,50 @@ Do not include markdown formatting. Return raw JSON.
                     {"description": p, "status": "overdue" if "overdue" in p.lower() or "qbr" in p.lower() else "open"}
                     for p in parsed.get("open_promises", [])
                 ]
+                
+                # Observability & token tracking
+                llm_latency_ms = int((time.time() - llm_start) * 1000)
+                estimated_tokens = len(prompt.split()) + len(res_text.split())
+                error_tracker.record_tokens(estimated_tokens)
+                app_logger.info(
+                    "LLM inference completed successfully",
+                    extra={
+                        "request_id": request_id or "internal",
+                        "event_type": "llm_inference",
+                        "model": "llama-3.3-70b-versatile",
+                        "token_count": estimated_tokens,
+                        "latency_ms": llm_latency_ms,
+                        "status": "success"
+                    }
+                )
                 return parsed
             except Exception as e:
-                logger.error(f"Groq LLM call failed: {e}")
+                error_tracker.record_error(
+                    category="llm_error",
+                    message=f"Groq LLM call failed: {str(e)[:150]}",
+                    request_id=request_id,
+                    account_id=account_id
+                )
+                app_logger.warning(
+                    f"Groq LLM call failed, engaging deterministic reflection: {e}",
+                    extra={"request_id": request_id or "internal", "event_type": "llm_fallback"}
+                )
 
         # Fallback intelligent reasoning synthesis
         res = self._rule_based_synthesis(account_id, mode, account_memories, cross_account_memories, observations, world_facts, experience_facts)
         res["memory_trace"] = trace
+        
+        total_latency_ms = int((time.time() - start_time) * 1000)
+        app_logger.info(
+            f"Copilot briefing synthesized for {account_id}",
+            extra={
+                "request_id": request_id or "internal",
+                "event_type": "copilot_synthesis",
+                "account_id": account_id,
+                "latency_ms": total_latency_ms,
+                "status": "success_rule_based"
+            }
+        )
         return res
 
     def _rule_based_synthesis(
@@ -224,7 +275,7 @@ Do not include markdown formatting. Return raw JSON.
 
     async def generate_renewal_brief(self, account_id: str, account_name: str, renewal_days: int) -> Dict[str, Any]:
         """Generate evidence-grounded Renewal Brief summarizing context, risks, commitments, and recommendations."""
-        memories = await hindsight_service.recall(query="renewal pricing sso commit issue", account_id=account_id, limit=20)
+        memories = await hindsight_service.recall(query="renewal pricing sso commit issue", account_id=account_id, limit=15)
         observations = hindsight_service.get_observations(account_id)
         
         risks = []
@@ -330,4 +381,3 @@ Do not include markdown formatting. Return raw JSON.
         }
 
 agent_service = AgentService()
-

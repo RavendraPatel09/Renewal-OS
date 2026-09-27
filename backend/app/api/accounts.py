@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Header
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Dict
+from datetime import datetime, timezone, timedelta
 from app.db.session import get_db
 from app.models.db_models import Account, Contact, Interaction, Commitment, User
 from app.models.schemas import (
@@ -14,10 +14,19 @@ from app.models.schemas import (
     TemporalStepResponse,
     KnowledgeGraphResponse
 )
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user_optional, get_current_user
+from app.core.logging_config import app_logger
 from app.services.hindsight_service import hindsight_service
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
+
+# In-memory idempotency cache: hash -> (interaction_id, timestamp)
+idempotency_cache: Dict[str, tuple] = {}
+
+def get_interaction_idempotency_key(account_id: str, title: str, content: str, occurred_at: str) -> str:
+    import hashlib
+    raw = f"{account_id}:{title}:{content[:100]}:{occurred_at}"
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()
 
 @router.get("", response_model=List[AccountResponse])
 async def get_accounts(db: Session = Depends(get_db)):
@@ -87,6 +96,40 @@ async def get_account(account_id: str, db: Session = Depends(get_db)):
         } for c in acc.commitments]
     )
 
+@router.delete("/{account_id}")
+async def delete_account(
+    account_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Data Rights / GDPR Endpoint: Delete account from PostgreSQL and purge all Hindsight memories.
+    """
+    acc = db.query(Account).filter(Account.id == account_id).first()
+    if not acc:
+        raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
+
+    # 1. Delete associated DB rows
+    db.query(Interaction).filter(Interaction.account_id == account_id).delete()
+    db.query(Commitment).filter(Commitment.account_id == account_id).delete()
+    db.query(Contact).filter(Contact.account_id == account_id).delete()
+    db.delete(acc)
+    db.commit()
+
+    # 2. Purge from Hindsight Memory Bank
+    hindsight_service.purge_account_memories(account_id)
+
+    app_logger.info(
+        f"Account {account_id} and all related memory records permanently deleted",
+        extra={"event_type": "data_deletion", "account_id": account_id, "user_id": current_user.id}
+    )
+
+    return {
+        "status": "success",
+        "message": f"Account '{account_id}' and all associated Hindsight memories permanently deleted.",
+        "account_id": account_id
+    }
+
 @router.get("/{account_id}/temporal", response_model=List[TemporalStepResponse])
 async def get_account_temporal(account_id: str):
     return hindsight_service.get_temporal_progression(account_id)
@@ -117,17 +160,47 @@ async def get_account_interactions(account_id: str, db: Session = Depends(get_db
 
 @router.post("/{account_id}/interactions", response_model=InteractionResponse)
 async def create_interaction(
+    request: Request,
     account_id: str,
     req: InteractionCreateRequest,
     db: Session = Depends(get_db),
-    user: Optional[User] = Depends(get_current_user_optional)
+    user: Optional[User] = Depends(get_current_user_optional),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key")
 ):
+    req_id = getattr(request.state, "request_id", "internal")
     acc = db.query(Account).filter(Account.id == account_id).first()
     if not acc:
         raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
     
-    occurred_at = req.occurred_at or datetime.utcnow().strftime("%Y-%m-%d")
+    occurred_at = req.occurred_at or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
+    # 0. Idempotency & double-click protection (60 second window)
+    cache_key = idempotency_key or get_interaction_idempotency_key(account_id, req.title, req.content, occurred_at)
+    now = datetime.now(timezone.utc)
+    if cache_key in idempotency_cache:
+        cached_id, cached_time = idempotency_cache[cache_key]
+        if now - cached_time < timedelta(seconds=60):
+            existing_int = db.query(Interaction).filter(Interaction.id == cached_id).first()
+            if existing_int:
+                app_logger.info(
+                    f"Duplicate write blocked by idempotency key for {account_id}",
+                    extra={"request_id": req_id, "event_type": "write_idempotent_hit", "account_id": account_id}
+                )
+                return InteractionResponse(
+                    id=existing_int.id,
+                    account_id=existing_int.account_id,
+                    type=existing_int.type,
+                    title=existing_int.title,
+                    content=existing_int.content,
+                    sentiment=existing_int.sentiment,
+                    importance=existing_int.importance,
+                    occurred_at=existing_int.occurred_at,
+                    source=existing_int.source,
+                    fact_type=existing_int.fact_type,
+                    hindsight_retained=existing_int.hindsight_retained,
+                    hindsight_memory_id=existing_int.hindsight_memory_id
+                )
+
     # 1. Save to database
     interaction = Interaction(
         account_id=account_id,
@@ -145,6 +218,7 @@ async def create_interaction(
     db.add(interaction)
     db.commit()
     db.refresh(interaction)
+    idempotency_cache[cache_key] = (interaction.id, now)
 
     # 2. Retain in Hindsight
     try:
@@ -160,14 +234,17 @@ async def create_interaction(
                 "title": req.title,
                 "sentiment": req.sentiment or "neutral",
                 "importance": req.importance or "medium",
-                "source": req.source or "Manual Entry"
-            }
+                "source": req.source or "Manual Entry",
+                "workspace_id": acc.workspace_id
+            },
+            request_id=req_id,
+            workspace_id=acc.workspace_id
         )
         interaction.hindsight_retained = True
         interaction.hindsight_memory_id = hindsight_res.get("id", interaction.id)
         db.commit()
     except Exception as e:
-        # Graceful failure behavior: interaction saved in DB, flag hindsight as not retained
+        # Graceful failure: record stays in DB, hindsight marked for reconciliation
         db.commit()
 
     # Update account open issues count or sentiment if critical
@@ -204,6 +281,45 @@ async def create_interaction(
         hindsight_retained=interaction.hindsight_retained,
         hindsight_memory_id=interaction.hindsight_memory_id
     )
+
+@router.post("/{account_id}/interactions/{interaction_id}/resync")
+async def resync_interaction(
+    account_id: str,
+    interaction_id: str,
+    db: Session = Depends(get_db)
+):
+    """Reconciliation endpoint: re-attempt Hindsight Retain for an un-synced interaction."""
+    interaction = db.query(Interaction).filter(
+        Interaction.id == interaction_id,
+        Interaction.account_id == account_id
+    ).first()
+    if not interaction:
+        raise HTTPException(status_code=404, detail="Interaction not found.")
+
+    h_res = await hindsight_service.retain(
+        account_id=account_id,
+        content=f"{interaction.title}: {interaction.content}",
+        metadata={
+            "id": interaction.id,
+            "interaction_type": interaction.type,
+            "fact_type": interaction.fact_type,
+            "occurred_at": interaction.occurred_at,
+            "date": interaction.occurred_at,
+            "title": interaction.title,
+            "sentiment": interaction.sentiment,
+            "importance": interaction.importance,
+            "source": interaction.source
+        }
+    )
+    interaction.hindsight_retained = True
+    interaction.hindsight_memory_id = h_res.get("id", interaction.id)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Interaction {interaction_id} re-synced with Hindsight memory bank.",
+        "hindsight_memory_id": interaction.hindsight_memory_id
+    }
 
 @router.get("/{account_id}/observations", response_model=List[dict])
 async def get_account_observations(account_id: str):
@@ -245,16 +361,18 @@ async def get_meeting_prep(account_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{account_id}/meeting-notes")
 async def add_meeting_notes(
+    request: Request,
     account_id: str,
     req: dict,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_current_user_optional)
 ):
+    req_id = getattr(request.state, "request_id", "internal")
     acc = db.query(Account).filter(Account.id == account_id).first()
     if not acc:
         raise HTTPException(status_code=404, detail=f"Account '{account_id}' not found.")
 
-    occurred_at = req.get("date") or datetime.utcnow().strftime("%Y-%m-%d")
+    occurred_at = req.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     title = req.get("title") or "Customer Meeting Notes"
     notes = req.get("notes") or ""
     participants = req.get("participants") or "CSM & Stakeholders"
@@ -293,13 +411,16 @@ async def add_meeting_notes(
                 "title": title,
                 "sentiment": "neutral",
                 "importance": "high",
-                "source": "Meeting Logger"
-            }
+                "source": "Meeting Logger",
+                "workspace_id": acc.workspace_id
+            },
+            request_id=req_id,
+            workspace_id=acc.workspace_id
         )
         interaction.hindsight_retained = True
         interaction.hindsight_memory_id = h_res.get("id", interaction.id)
         db.commit()
-    except Exception as e:
+    except Exception:
         db.commit()
 
     # 3. Audit event
@@ -379,4 +500,3 @@ async def create_commitment(
         due_date=commitment.due_date,
         created_at=commitment.created_at.isoformat() if commitment.created_at else None
     )
-

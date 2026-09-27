@@ -49,7 +49,7 @@ export const Demo: React.FC = () => {
       number: 4,
       title: "Temporal Retrieval: 60-Day Evolution",
       tagline: "Understanding customer trajectory over time",
-      desc: "Temporal recall surfaces how account health shifted over the last 60 days (Kickoff 🟢 → Ticket #4821 🟡 → QBR Promise 🟠 → Overdue 🔴)."
+      desc: "Temporal recall surfaces how account health shifted over the last 60 days (Kickoff [Healthy] → Ticket #4821 [Issue] → QBR Promise [Pending] → Overdue [Critical])."
     },
     {
       number: 5,

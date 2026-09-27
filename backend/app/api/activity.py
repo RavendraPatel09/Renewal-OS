@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.session import get_db
 from app.models.db_models import AuditEvent, User
 from app.models.schemas import AuditEventResponse
@@ -26,7 +26,7 @@ def record_audit_event(
             account_id=account_id,
             user_id=user_id,
             workspace_id=workspace_id,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(event)
         db.commit()
@@ -48,7 +48,7 @@ def get_activity_events(
                 title="Hindsight Memory Bank Connected",
                 description="Memory bank 'renewal_os_bank' active with configured mission and directives.",
                 account_id="acme-corp",
-                created_at=datetime.utcnow().strftime("%H:%M • %Y-%m-%d")
+                created_at=datetime.now(timezone.utc).strftime("%H:%M • %Y-%m-%d")
             )
         ]
     return [
