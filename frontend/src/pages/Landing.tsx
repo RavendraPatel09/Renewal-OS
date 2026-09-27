@@ -1,100 +1,136 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Logo } from '../components/Logo';
-import { Bot, PlayCircle, Layers, ArrowRight, Database, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Compass, Database, Layers, CheckCircle2, ShieldCheck, Zap, Globe, Sparkles } from 'lucide-react';
 
 export const Landing: React.FC = () => {
   return (
-    <div className="space-y-16 pb-16 pt-6">
+    <div className="space-y-16 pb-16 pt-4 max-w-5xl mx-auto">
       {/* Hero Section */}
-      <div className="text-center max-w-3xl mx-auto space-y-6">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 text-xs font-semibold border border-brand-500/20">
-          <Database className="w-3.5 h-3.5" /> Persistent Customer Success Memory Layer
+      <div className="text-center space-y-5 max-w-3xl mx-auto pt-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+          <Database className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <span>Persistent AI Memory for Customer Success</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-          Your Customer's History Shouldn't Reset Every Quarter.
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.15]">
+          Customer context shouldn’t reset every quarter.
         </h1>
 
-        <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-          RenewalOS gives Customer Success teams persistent AI memory across every sales objection, support ticket, QBR commitment, and renewal conversation.
+        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
+          RenewalOS uses Hindsight to retain sales notes, support tickets, and QBR commitments — synthesizing dynamic observations and cross-account churn patterns.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <NavLink
-            to="/copilot"
-            className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs shadow-subtle transition flex items-center gap-2"
+            to="/dashboard"
+            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold rounded-lg text-xs shadow-xs transition flex items-center gap-2"
           >
-            <Bot className="w-4 h-4" /> Open Renewal Copilot
+            <span>Open Workspace</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </NavLink>
 
           <NavLink
             to="/demo"
-            className="px-6 py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs border border-slate-200 dark:border-slate-800 transition flex items-center gap-2 shadow-subtle"
+            className="px-5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs border border-slate-200 dark:border-slate-800 transition flex items-center gap-2"
           >
-            <PlayCircle className="w-4 h-4 text-brand-500" /> Watch the Agent Learn
+            <span>Demo Walkthrough</span>
           </NavLink>
         </div>
       </div>
 
-      {/* Visual Memory Architecture Diagram */}
-      <div className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-panel max-w-4xl mx-auto space-y-6">
-        <div className="text-center space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Architecture Pipeline</span>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">How RenewalOS Transforms Scattered Touchpoints</h3>
+      {/* Architecture Flow */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Core Architecture
+            </span>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              The Hindsight Memory Pipeline
+            </h3>
+          </div>
+          <span className="text-xs text-slate-400 font-mono">Retain → Recall → Reflect</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto font-bold">1</div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Customer Memory</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Sales calls, support tickets, QBRs, emails retained in Hindsight</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/80 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs font-bold flex items-center justify-center">1</span>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Retain</h4>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Touchpoints ingested as World Facts (contracts, scale) and Experience Facts (tickets, QBRs).
+            </p>
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center mx-auto font-bold">2</div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Persistent Recall</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Factual search across World Facts and Experience Facts</p>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/80 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs font-bold flex items-center justify-center">2</span>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Recall</h4>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Temporal and factual search across historical memory timestamps with high precision.
+            </p>
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto font-bold">3</div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Pattern Recognition</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Consolidated observations and historical churn pattern matching</p>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/80 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs font-bold flex items-center justify-center">3</span>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Consolidate</h4>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Recurring signals coalesce into dynamic Observations with audit traces back to raw memories.
+            </p>
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto font-bold">4</div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Better Renewals</h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Grounded briefings and concrete next-step CSM interventions</p>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/80 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono text-xs font-bold flex items-center justify-center">4</span>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Reflect</h4>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Synthesizes open commitments and cross-account historical churn patterns to prescribe action.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Product Principles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold">✓</div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Context That Stays With the Account</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            When CSMs transition or months pass between QBRs, RenewalOS ensures zero loss of commitments, objections, or unresolved issues.
-          </p>
+      {/* Comparison Grid */}
+      <div className="space-y-4">
+        <div className="text-center space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Comparative Value
+          </span>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            How RenewalOS Differs from Traditional Tools
+          </h3>
         </div>
 
-        <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold">✓</div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Grounded Memory Evidence</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Every briefing card links directly back to supported Hindsight memories. Never guess why an account risk score was generated.
-          </p>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 shadow-xs">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Traditional CRM / Notes</span>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Fragmented Data Silos</h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Notes sit untouched in Salesforce or Zendesk. When a CSM leaves or months pass, historical commitments and nuance are lost.
+            </p>
+          </div>
 
-        <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-subtle space-y-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold">✓</div>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Cross-Account Churn Intelligence</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Compares active accounts against previous churned and renewed experiences to suggest proven intervention playbooks.
-          </p>
+          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 shadow-xs">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Standard Vector RAG</span>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Static Chunk Similarity</h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Finds similar text chunks without understanding temporal progression, shifts in account sentiment, or multi-stage commitments.
+            </p>
+          </div>
+
+          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-900 dark:border-slate-700 rounded-xl space-y-2 shadow-xs ring-1 ring-slate-900/10 dark:ring-slate-100/10">
+            <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">RenewalOS + Hindsight</span>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white">Grounded Memory Reasoning</h4>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+              Maintains durable memory banks, tracks open promises, links observations to evidence, and learns from previous renewal outcomes.
+            </p>
+          </div>
         </div>
       </div>
     </div>

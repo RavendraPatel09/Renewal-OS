@@ -12,6 +12,7 @@ export interface CustomerAccount {
   name: string;
   tier: string;
   plan?: string;
+  industry?: string;
   renewal_days: number;
   risk_score: number;
   risk_level: 'low' | 'medium' | 'high';
@@ -31,6 +32,8 @@ export interface CustomerAccount {
     is_decision_maker?: boolean;
   }>;
 }
+
+export type Account = CustomerAccount;
 
 export interface EvolutionStage {
   date: string;

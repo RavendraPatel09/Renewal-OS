@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { Navbar } from './components/Navbar';
-import { Footer } from './components/Footer';
+import { AppLayout } from './components/AppLayout';
 import { CommandMenu } from './components/CommandMenu';
 import { AddInteractionModal } from './components/AddInteractionModal';
 
@@ -42,100 +41,90 @@ export const App: React.FC = () => {
     }
   }, [darkMode]);
 
+  // Helper wrapper for protected workspace routes inside AppLayout
+  const renderWorkspaceRoute = (children: React.ReactNode) => (
+    <ProtectedRoute>
+      <AppLayout
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        onOpenAddModal={() => setIsModalOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+      >
+        {children}
+      </AppLayout>
+    </ProtectedRoute>
+  );
+
   return (
     <ToastProvider>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
-            <Navbar
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              onOpenAddModal={() => setIsModalOpen(true)}
-              onOpenSearch={() => setIsSearchOpen(true)}
-            />
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-150">
+            <Routes>
+              {/* Public Routes */}
+              <Route
+                path="/"
+                element={
+                  <div className="min-h-screen flex flex-col">
+                    <div className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+                      <Landing />
+                    </div>
+                  </div>
+                }
+              />
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
 
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Landing />} />
-                <Route path="/signin" element={<SignIn />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
+              {/* Protected Workspace Routes (wrapped in AppLayout) */}
+              <Route
+                path="/dashboard"
+                element={renderWorkspaceRoute(
+                  <Dashboard
+                    onOpenAddModal={() => setIsModalOpen(true)}
+                    onOpenSearch={() => setIsSearchOpen(true)}
+                  />
+                )}
+              />
+              <Route
+                path="/accounts"
+                element={renderWorkspaceRoute(<Accounts />)}
+              />
+              <Route
+                path="/accounts/:id"
+                element={renderWorkspaceRoute(
+                  <AccountDetail onOpenAddModal={() => setIsModalOpen(true)} />
+                )}
+              />
+              <Route
+                path="/copilot"
+                element={renderWorkspaceRoute(<Copilot />)}
+              />
+              <Route
+                path="/memory"
+                element={renderWorkspaceRoute(<Memory />)}
+              />
+              <Route
+                path="/demo"
+                element={renderWorkspaceRoute(<Demo />)}
+              />
+              <Route
+                path="/feedback"
+                element={renderWorkspaceRoute(<Feedback />)}
+              />
+              <Route
+                path="/settings"
+                element={renderWorkspaceRoute(
+                  <Settings darkMode={darkMode} setDarkMode={setDarkMode} />
+                )}
+              />
 
-                {/* Protected Workspace Routes */}
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard onOpenAddModal={() => setIsModalOpen(true)} onOpenSearch={() => setIsSearchOpen(true)} />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/accounts"
-                  element={
-                    <ProtectedRoute>
-                      <Accounts />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/accounts/:id"
-                  element={
-                    <ProtectedRoute>
-                      <AccountDetail onOpenAddModal={() => setIsModalOpen(true)} />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/copilot"
-                  element={
-                    <ProtectedRoute>
-                      <Copilot />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/memory"
-                  element={
-                    <ProtectedRoute>
-                      <Memory />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/demo"
-                  element={
-                    <ProtectedRoute>
-                      <Demo />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/feedback"
-                  element={
-                    <ProtectedRoute>
-                      <Feedback />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <Settings darkMode={darkMode} setDarkMode={setDarkMode} />
-                    </ProtectedRoute>
-                  }
-                />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-
-            <Footer />
-
+            {/* Global Modals & Command Menu */}
             <CommandMenu
               isOpen={isSearchOpen}
               onClose={() => setIsSearchOpen(false)}
